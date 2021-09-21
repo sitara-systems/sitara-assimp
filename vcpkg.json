@@ -1,0 +1,19 @@
+{
+	"name": "sitara-assimp",
+	"version-string": "v0.1",
+	"port-version": 0,
+	"description": [
+		"Block for using assimp for rendering 3d models",
+        "Copy the dependencies below to your manifest file."
+	],
+	"homepage": "https://github.com/sitara-systems/sitara-assimp",
+	"documentation": "",
+	"maintainers": [
+		"Nathan Lachenmyer <nathan@sitara.systems>"
+	],
+	"dependencies": [
+		{
+			"name": "assimp"
+		}
+	]
+}

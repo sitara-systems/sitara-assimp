@@ -23,7 +23,7 @@ using namespace std;
 namespace mndl {
 
 Node::Node() :
-	mScale( Vec3f::one() ),
+	mScale( vec3(1) ),
 	mInheritOrientation( true ),
 	mInheritScale( true ),
 	mNeedsUpdate( true )
@@ -32,7 +32,7 @@ Node::Node() :
 
 Node::Node( const std::string &name ) :
 	mName( name ),
-	mScale( Vec3f::one() ),
+	mScale( vec3(1) ),
 	mInheritOrientation( true ),
 	mInheritScale( true ),
 	mNeedsUpdate( true )
@@ -55,36 +55,36 @@ void Node::addChild( NodeRef child )
 	mChildren.push_back( child );
 }
 
-void Node::setOrientation( const ci::Quatf &q )
+void Node::setOrientation( const ci::quat &q )
 {
 	mOrientation = q;
-	mOrientation.normalize();
+	mOrientation = glm::normalize(mOrientation);
 	requestUpdate();
 }
 
-const Quatf &Node::getOrientation() const
+const quat &Node::getOrientation() const
 {
 	return mOrientation;
 }
 
-void Node::setPosition( const ci::Vec3f &pos )
+void Node::setPosition( const ci::vec3 &pos )
 {
 	mPosition = pos;
 	requestUpdate();
 }
 
-const Vec3f& Node::getPosition() const
+const vec3& Node::getPosition() const
 {
 	return mPosition;
 }
 
-void Node::setScale( const Vec3f &scale )
+void Node::setScale( const vec3 &scale )
 {
 	mScale = scale;
 	requestUpdate();
 }
 
-const Vec3f &Node::getScale() const
+const vec3 &Node::getScale() const
 {
 	return mScale;
 }
@@ -136,50 +136,50 @@ void Node::resetToInitialState()
 	requestUpdate();
 }
 
-const Vec3f &Node::getInitialPosition() const
+const vec3 &Node::getInitialPosition() const
 {
 	return mInitialPosition;
 }
 
-const Quatf &Node::getInitialOrientation() const
+const quat &Node::getInitialOrientation() const
 {
 	return mInitialOrientation;
 }
 
-const Vec3f &Node::getInitialScale() const
+const vec3 &Node::getInitialScale() const
 {
 	return mInitialScale;
 }
 
-const Quatf &Node::getDerivedOrientation() const
+const quat &Node::getDerivedOrientation() const
 {
 	if ( mNeedsUpdate )
 		update();
 	return mDerivedOrientation;
 }
 
-const Vec3f &Node::getDerivedPosition() const
+const vec3 &Node::getDerivedPosition() const
 {
 	if ( mNeedsUpdate )
 		update();
 	return mDerivedPosition;
 }
 
-const Vec3f &Node::getDerivedScale() const
+const vec3 &Node::getDerivedScale() const
 {
 	if ( mNeedsUpdate )
 		update();
 	return mDerivedScale;
 }
 
-const Matrix44f &Node::getDerivedTransform() const
+const mat4 &Node::getDerivedTransform() const
 {
 	if ( mNeedsUpdate )
 		update();
 
-    mDerivedTransform = Matrix44f::createScale( mDerivedScale );
-    mDerivedTransform *= mDerivedOrientation.toMatrix44();
-    mDerivedTransform.setTranslate( mDerivedPosition );
+    mDerivedTransform = glm::scale(mDerivedScale);
+    mDerivedTransform *= ci::mat4(mDerivedOrientation);
+    mDerivedTransform *= glm::translate(mDerivedPosition);
 
     return mDerivedTransform;
 }
@@ -189,7 +189,7 @@ void Node::update() const
     if ( mParent )
     {
         // update orientation
-        const Quatf &parentOrientation = mParent->getDerivedOrientation();
+        const quat &parentOrientation = mParent->getDerivedOrientation();
         if ( mInheritOrientation )
         {
             // Combine orientation with that of parent
@@ -201,7 +201,7 @@ void Node::update() const
         }
 
         // update scale
-        const Vec3f &parentScale = mParent->getDerivedScale();
+        const vec3 &parentScale = mParent->getDerivedScale();
         if ( mInheritScale )
         {
             mDerivedScale = parentScale * getScale();

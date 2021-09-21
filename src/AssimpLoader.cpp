@@ -37,7 +37,7 @@ static void fromAssimp( const aiMesh *aim, TriMesh *cim )
 	// copy vertices
 	for ( unsigned i = 0; i < aim->mNumVertices; ++i )
 	{
-		cim->appendVertex( fromAssimp( aim->mVertices[i] ) );
+		cim->appendPosition(fromAssimp(aim->mVertices[i]));
 	}
 
 	if( aim->HasNormals() )
@@ -54,7 +54,7 @@ static void fromAssimp( const aiMesh *aim, TriMesh *cim )
 	{
 		for ( unsigned i = 0; i < aim->mNumVertices; ++i )
 		{
-			cim->appendTexCoord( Vec2f( aim->mTextureCoords[0][i].x,
+			cim->appendTexCoord( vec2( aim->mTextureCoords[0][i].x,
 										aim->mTextureCoords[0][i].y ) );
 		}
 	}
@@ -64,7 +64,7 @@ static void fromAssimp( const aiMesh *aim, TriMesh *cim )
 	{
 		for ( unsigned i = 0; i < aim->mNumVertices; ++i )
 		{
-			cim->appendColorRGBA( fromAssimp( aim->mColors[0][i] ) );
+			cim->appendColorRgba( fromAssimp( aim->mColors[0][i] ) );
 		}
 	}
 
@@ -117,12 +117,12 @@ AssimpLoader::AssimpLoader( fs::path filename ) :
 
 void AssimpLoader::calculateDimensions()
 {
-	Vec3f aMin, aMax;
+	vec3 aMin, aMax;
 	calculateBoundingBox( &aMin, &aMax );
-	mBoundingBox = AxisAlignedBox3f( aMin, aMax );
+	mBoundingBox = AxisAlignedBox( aMin, aMax );
 }
 
-void AssimpLoader::calculateBoundingBox( ci::Vec3f *min, ci::Vec3f *max )
+void AssimpLoader::calculateBoundingBox( ci::vec3 *min, ci::vec3 *max )
 {
 	aiMatrix4x4 trafo;
 
@@ -230,37 +230,37 @@ AssimpMeshRef AssimpLoader::convertAiMesh( const aiMesh *mesh )
 	if ( ( AI_SUCCESS == mtl->Get( AI_MATKEY_TWOSIDED, twoSided ) ) && twoSided )
 	{
 		assimpMeshRef->mTwoSided = true;
-		assimpMeshRef->mMaterial.setFace( GL_FRONT_AND_BACK );
+		//assimpMeshRef->mMaterial.setFace( GL_FRONT_AND_BACK );
 		app::console() << " two sided" << endl;
 	}
 	else
 	{
 		assimpMeshRef->mTwoSided = false;
-		assimpMeshRef->mMaterial.setFace( GL_FRONT );
+		//assimpMeshRef->mMaterial.setFace( GL_FRONT );
 	}
 
 	aiColor4D dcolor, scolor, acolor, ecolor;
 	if ( AI_SUCCESS == mtl->Get( AI_MATKEY_COLOR_DIFFUSE, dcolor ) )
 	{
-		assimpMeshRef->mMaterial.setDiffuse( fromAssimp( dcolor ) );
+		//assimpMeshRef->mMaterial.setDiffuse( fromAssimp( dcolor ) );
 		app::console() << " diffuse: " << fromAssimp( dcolor ) << endl;
 	}
 
 	if ( AI_SUCCESS == mtl->Get( AI_MATKEY_COLOR_SPECULAR, scolor ) )
 	{
-		assimpMeshRef->mMaterial.setSpecular( fromAssimp( scolor ) );
+		//assimpMeshRef->mMaterial.setSpecular( fromAssimp( scolor ) );
 		app::console() << " specular: " << fromAssimp( scolor ) << endl;
 	}
 
 	if ( AI_SUCCESS == mtl->Get( AI_MATKEY_COLOR_AMBIENT, acolor ) )
 	{
-		assimpMeshRef->mMaterial.setAmbient( fromAssimp( acolor ) );
+		//assimpMeshRef->mMaterial.setAmbient( fromAssimp( acolor ) );
 		app::console() << " ambient: " << fromAssimp( acolor ) << endl;
 	}
 
 	if ( AI_SUCCESS == mtl->Get( AI_MATKEY_COLOR_EMISSIVE, ecolor ) )
 	{
-		assimpMeshRef->mMaterial.setEmission( fromAssimp( ecolor ) );
+		//assimpMeshRef->mMaterial.setEmission( fromAssimp( ecolor ) );
 		app::console() << " emission: " << fromAssimp( ecolor ) << endl;
 	}
 
@@ -364,7 +364,7 @@ AssimpMeshRef AssimpLoader::convertAiMesh( const aiMesh *mesh )
 			}
 		}
 
-		assimpMeshRef->mTexture = gl::Texture( loadImage( realPath ), format );
+		assimpMeshRef->mTexture = gl::Texture::create( loadImage( realPath ), format );
 	}
 
 	assimpMeshRef->mAiMesh = mesh;
@@ -558,7 +558,7 @@ const TriMesh &AssimpLoader::getAssimpNodeMesh( const string &name, size_t n /* 
 		throw AssimpLoaderExc( "node " + name + " not found." );
 }
 
-gl::Texture &AssimpLoader::getAssimpNodeTexture( const string &name, size_t n /* = 0 */ )
+gl::Texture2dRef &AssimpLoader::getAssimpNodeTexture( const string &name, size_t n /* = 0 */ )
 {
 	AssimpNodeRef node = getAssimpNode( name );
 	if ( node && n < node->mMeshes.size() )
@@ -567,7 +567,7 @@ gl::Texture &AssimpLoader::getAssimpNodeTexture( const string &name, size_t n /*
 		throw AssimpLoaderExc( "node " + name + " not found." );
 }
 
-const gl::Texture &AssimpLoader::getAssimpNodeTexture( const string &name, size_t n /* = 0 */ ) const
+const gl::Texture2dRef &AssimpLoader::getAssimpNodeTexture( const string &name, size_t n /* = 0 */ ) const
 {
 	const AssimpNodeRef node = getAssimpNode( name );
 	if ( node && n < node->mMeshes.size() )
@@ -576,38 +576,20 @@ const gl::Texture &AssimpLoader::getAssimpNodeTexture( const string &name, size_
 		throw AssimpLoaderExc( "node " + name + " not found." );
 }
 
-gl::Material &AssimpLoader::getAssimpNodeMaterial( const string &name, size_t n /* = 0 */ )
-{
-	AssimpNodeRef node = getAssimpNode( name );
-	if ( node && n < node->mMeshes.size() )
-		return node->mMeshes[ n ]->mMaterial;
-	else
-		throw AssimpLoaderExc( "node " + name + " not found." );
-}
-
-const gl::Material &AssimpLoader::getAssimpNodeMaterial( const string &name, size_t n /* = 0 */ ) const
-{
-	const AssimpNodeRef node = getAssimpNode( name );
-	if ( node && n < node->mMeshes.size() )
-		return node->mMeshes[ n ]->mMaterial;
-	else
-		throw AssimpLoaderExc( "node " + name + " not found." );
-}
-
-void AssimpLoader::setNodeOrientation( const string &name, const Quatf &rot )
+void AssimpLoader::setNodeOrientation( const string &name, const quat &rot )
 {
 	AssimpNodeRef node = getAssimpNode( name );
 	if ( node )
 		node->setOrientation( rot );
 }
 
-Quatf AssimpLoader::getNodeOrientation( const string &name )
+quat AssimpLoader::getNodeOrientation( const string &name )
 {
 	AssimpNodeRef node = getAssimpNode( name );
 	if ( node )
 		return node->getOrientation();
 	else
-		return Quatf();
+		return quat();
 }
 
 size_t AssimpLoader::getNumAnimations() const
@@ -728,11 +710,17 @@ void AssimpLoader::updateMeshes()
 			if ( mSkinningEnabled )
 			{
 				// animated data
-				std::vector< Vec3f > &vertices = assimpMeshRef->mCachedTriMesh.getVertices();
+				std::vector<vec3> vertices;
+				size_t numVertices = assimpMeshRef->mCachedTriMesh.getNumVertices();
+				const auto& positions = assimpMeshRef->mCachedTriMesh.getPositions<3>();
+				for (int i = 0; i < numVertices; i++) {
+					vertices.push_back(positions[i]);
+				}
+
 				for( size_t v = 0; v < vertices.size(); ++v )
 					vertices[v] = fromAssimp( assimpMeshRef->mAnimatedPos[ v ] );
 
-				std::vector< Vec3f > &normals = assimpMeshRef->mCachedTriMesh.getNormals();
+				std::vector< vec3 > &normals = assimpMeshRef->mCachedTriMesh.getNormals();
 				for( size_t v = 0; v < normals.size(); ++v )
 					normals[v] = fromAssimp( assimpMeshRef->mAnimatedNorm[ v ] );
 			}
@@ -741,11 +729,17 @@ void AssimpLoader::updateMeshes()
 				// original mesh data from assimp
 				const aiMesh *mesh = assimpMeshRef->mAiMesh;
 
-				std::vector< Vec3f > &vertices = assimpMeshRef->mCachedTriMesh.getVertices();
+				std::vector<vec3> vertices;
+				size_t numVertices = assimpMeshRef->mCachedTriMesh.getNumVertices();
+				const auto& positions = assimpMeshRef->mCachedTriMesh.getPositions<3>();
+				for (int i = 0; i < numVertices; i++) {
+					vertices.push_back(positions[i]);
+				}
+
 				for( size_t v = 0; v < vertices.size(); ++v )
 					vertices[v] = fromAssimp( mesh->mVertices[ v ] );
 
-				std::vector< Vec3f > &normals = assimpMeshRef->mCachedTriMesh.getNormals();
+				std::vector< vec3 > &normals = assimpMeshRef->mCachedTriMesh.getNormals();
 				for( size_t v = 0; v < normals.size(); ++v )
 					normals[v] = fromAssimp( mesh->mNormals[ v ] );
 			}
@@ -806,16 +800,7 @@ void AssimpLoader::draw()
 			// Texture Binding
 			if ( mTexturesEnabled && assimpMeshRef->mTexture )
 			{
-				assimpMeshRef->mTexture.enableAndBind();
-			}
-
-			if ( mMaterialsEnabled )
-			{
-				assimpMeshRef->mMaterial.apply();
-			}
-			else
-			{
-				gl::color( assimpMeshRef->mMaterial.getDiffuse());
+				assimpMeshRef->mTexture->bind();
 			}
 
 			// Culling
@@ -829,7 +814,7 @@ void AssimpLoader::draw()
 			// Texture Binding
 			if ( mTexturesEnabled && assimpMeshRef->mTexture )
 			{
-				assimpMeshRef->mTexture.unbind();
+				assimpMeshRef->mTexture->unbind();
 			}
 		}
 	}
