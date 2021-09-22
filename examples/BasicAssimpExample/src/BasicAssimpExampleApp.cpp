@@ -14,12 +14,12 @@ using namespace mndl;
 
 class BasicAssimpExampleApp : public App {
   public:
-	void prepareSettings(Settings* settings);
 	void setup() override;
 	void update() override;
 	void draw() override;
 	void mouseDown(MouseEvent event) override;
 	void mouseDrag(MouseEvent event) override;
+	void mouseWheel(MouseEvent event) override;
 	assimp::AssimpLoader mAssimpLoader;
 
 	ci::CameraUi mCameraUi;
@@ -35,17 +35,11 @@ class BasicAssimpExampleApp : public App {
 	float mFps;
 };
 
-void BasicAssimpExampleApp::prepareSettings(Settings* settings)
-{
-	settings->setWindowSize(800, 600);
-}
-
 void BasicAssimpExampleApp::setup()
 {
 	mAssimpLoader = assimp::AssimpLoader(getAssetPath("astroboy_walk.dae"));
-	mAssimpLoader.setAnimation(0);
 
-	mCamera.setPerspective(60, getWindowAspectRatio(), 0.1f, 100.0f);
+	mCamera.setPerspective(60, getWindowAspectRatio(), 0.1f, 50000.0f);
 	mCamera.lookAt(vec3(0.0f, 7.0f, 20.0), vec3(0.0, 7.0, 0.0), vec3(0, 1, 0));
 	mCameraUi = CameraUi(&mCamera);
 
@@ -69,49 +63,43 @@ void BasicAssimpExampleApp::update()
 	mAssimpLoader.enableTextures(mEnableTextures);
 	mAssimpLoader.enableSkinning(mEnableSkinning);
 	mAssimpLoader.enableAnimation(mEnableAnimation);
+	mAssimpLoader.disableMaterials();
 
+	/*
 	double time = fmod(getElapsedSeconds(), mAssimpLoader.getAnimationDuration(0));
 	mAssimpLoader.setTime(time);
 	mAssimpLoader.update();
+	*/
 
 	mFps = getAverageFps();
 }
 
-void BasicAssimpExampleApp::draw()
-{
-	gl::clear(Color::black());
+void BasicAssimpExampleApp::draw() {
+	ci::gl::clear(Color::black());
 
-	gl::setMatrices(mCamera);
+	ci::gl::setMatrices(mCamera);
 
-	gl::enableDepthWrite();
-	gl::enableDepthRead();
+	ci::gl::enableDepthWrite();
+	ci::gl::enableDepthRead();
 
-	gl::color(Color::white());
+	ci::gl::color(Color::white());
 
 	if (mEnableWireframe) {
-		gl::enableWireframe();
+		ci::gl::enableWireframe();
 	}
 
-	/*
-	ci::gl::Light light(gl::Light::DIRECTIONAL, 0);
-	light.setAmbient(Color::white());
-	light.setDiffuse(Color::white());
-	light.setSpecular(Color::white());
-	light.lookAt(vec3(0, 5, -20), vec3(0, 5, 0));
-	light.update(mMayaCam);
-	light.enable();
-	*/
-
-	gl::enable(GL_LIGHTING);
-	gl::enable(GL_NORMALIZE);
 	mAssimpLoader.draw();
-	gl::disable(GL_LIGHTING);
 
-	if (mEnableWireframe)
-		gl::disableWireframe();
+	if (mEnableWireframe) {
+		ci::gl::disableWireframe();
+	}
 
-	if (mDrawBBox)
-		gl::drawStrokedCube(mAssimpLoader.getBoundingBox());
+	if (mDrawBBox) {
+		ci::gl::drawStrokedCube(mAssimpLoader.getBoundingBox());
+	}
+
+	ci::gl::disableDepthRead();
+	ci::gl::disableDepthWrite();
 
 	mParams.draw();
 }
@@ -129,6 +117,11 @@ void BasicAssimpExampleApp::mouseDrag(MouseEvent event) {
 		});
 }
 
+void BasicAssimpExampleApp::mouseWheel(MouseEvent event) {
+	mCameraUi.mouseWheel(event.getWheelIncrement());
+}
+
 CINDER_APP(BasicAssimpExampleApp, RendererGl, [=](cinder::app::App::Settings* settings) {
 	settings->setConsoleWindowEnabled();
+	settings->setWindowSize(1920, 1080);
 	})

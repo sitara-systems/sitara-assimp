@@ -35,8 +35,7 @@ namespace mndl { namespace assimp {
 static void fromAssimp( const aiMesh *aim, TriMesh *cim )
 {
 	// copy vertices
-	for ( unsigned i = 0; i < aim->mNumVertices; ++i )
-	{
+	for ( unsigned i = 0; i < aim->mNumVertices; ++i ) {
 		cim->appendPosition(fromAssimp(aim->mVertices[i]));
 	}
 
@@ -783,10 +782,6 @@ void AssimpLoader::update()
 
 void AssimpLoader::draw()
 {
-	glPushAttrib( GL_ALL_ATTRIB_BITS );
-	glPushClientAttrib( GL_CLIENT_ALL_ATTRIB_BITS );
-	gl::enable( GL_NORMALIZE );
-
 	vector< AssimpNodeRef >::const_iterator it = mMeshNodes.begin();
 	for ( ; it != mMeshNodes.end(); ++it )
 	{
@@ -798,29 +793,29 @@ void AssimpLoader::draw()
 			AssimpMeshRef assimpMeshRef = *meshIt;
 
 			// Texture Binding
-			if ( mTexturesEnabled && assimpMeshRef->mTexture )
-			{
-				assimpMeshRef->mTexture->bind();
+			if (mTexturesEnabled && assimpMeshRef->mTexture) {
+				ci::gl::ScopedGlslProg shader(ci::gl::getStockShader(ci::gl::ShaderDef().lambert().color().texture()));
+				ci::gl::ScopedTextureBind tex(assimpMeshRef->mTexture);
+
+				// Culling
+				if (assimpMeshRef->mTwoSided)
+					gl::enable(GL_CULL_FACE);
+				else
+					gl::disable(GL_CULL_FACE);
+
+				gl::draw(assimpMeshRef->mCachedTriMesh);
 			}
+			else {
+				// Culling
+				if (assimpMeshRef->mTwoSided)
+					gl::enable(GL_CULL_FACE);
+				else
+					gl::disable(GL_CULL_FACE);
 
-			// Culling
-			if ( assimpMeshRef->mTwoSided )
-				gl::enable( GL_CULL_FACE );
-			else
-				gl::disable( GL_CULL_FACE );
-
-			gl::draw( assimpMeshRef->mCachedTriMesh );
-
-			// Texture Binding
-			if ( mTexturesEnabled && assimpMeshRef->mTexture )
-			{
-				assimpMeshRef->mTexture->unbind();
+				gl::draw(assimpMeshRef->mCachedTriMesh);
 			}
 		}
 	}
-
-	glPopClientAttrib();
-	glPopAttrib();
 }
 
 } } // namespace mndl::assimp
