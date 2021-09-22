@@ -788,8 +788,7 @@ void AssimpLoader::draw()
 		AssimpNodeRef nodeRef = *it;
 
 		vector< AssimpMeshRef >::const_iterator meshIt = nodeRef->mMeshes.begin();
-		for ( ; meshIt != nodeRef->mMeshes.end(); ++meshIt )
-		{
+		for ( ; meshIt != nodeRef->mMeshes.end(); ++meshIt ) {
 			AssimpMeshRef assimpMeshRef = *meshIt;
 
 			// Texture Binding
