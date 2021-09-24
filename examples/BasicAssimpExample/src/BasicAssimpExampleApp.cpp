@@ -10,17 +10,15 @@ using namespace ci;
 using namespace ci::app;
 using namespace std;
 
-using namespace mndl;
-
 class BasicAssimpExampleApp : public App {
-  public:
+public:
 	void setup() override;
 	void update() override;
 	void draw() override;
 	void mouseDown(MouseEvent event) override;
 	void mouseDrag(MouseEvent event) override;
 	void mouseWheel(MouseEvent event) override;
-	assimp::AssimpLoader mAssimpLoader;
+	sitara::assimp::AssimpLoader mAssimpLoader;
 
 	ci::CameraUi mCameraUi;
 	ci::CameraPersp mCamera;
@@ -37,9 +35,9 @@ class BasicAssimpExampleApp : public App {
 
 void BasicAssimpExampleApp::setup()
 {
-	mAssimpLoader = assimp::AssimpLoader(getAssetPath("turbine_hall_cutaway.obj"));
+	mAssimpLoader = sitara::assimp::AssimpLoader(getAssetPath("astroboy_walk.dae"));
 
-	mCamera.setPerspective(60, getWindowAspectRatio(), 0.1f, 50000.0f);
+	mCamera.setPerspective(60, getWindowAspectRatio(), 1.0f, 20000.0f);
 	mCamera.lookAt(vec3(0.0f, 7.0f, 20.0), vec3(0.0, 7.0, 0.0), vec3(0, 1, 0));
 	mCameraUi = CameraUi(&mCamera);
 

@@ -21,35 +21,45 @@
 #include <string>
 
 #include "assimp/mesh.h"
-//#include "assimp/aiMesh.h"
 
 #include "cinder/Cinder.h"
 #include "cinder/TriMesh.h"
 #include "cinder/gl/Texture.h"
+#include "cinder/gl/Batch.h"
 
-namespace mndl { namespace assimp {
+namespace sitara {
+	namespace assimp {
+		class AssimpMesh;
+		typedef std::shared_ptr< AssimpMesh > AssimpMeshRef;
 
-class AssimpMesh;
-typedef std::shared_ptr< AssimpMesh > AssimpMeshRef;
+		struct Material {
+			int mFace;
+			ci::ColorAf mDiffuse;
+			ci::ColorAf mSpecular;
+			ci::ColorAf mAmbient;
+			ci::ColorAf mEmission;
 
-class AssimpMesh
-{
-	public:
-		const aiMesh *mAiMesh;
+		};
 
-		ci::gl::Texture2dRef mTexture;
+		class AssimpMesh {
+			public:
+				const aiMesh *mAiMesh;
 
-		std::vector< uint32_t > mIndices;
+				ci::gl::Texture2dRef mTexture = nullptr;
 
-		bool mTwoSided;
+				Material mMaterial;
 
-		std::vector< aiVector3D > mAnimatedPos;
-		std::vector< aiVector3D > mAnimatedNorm;
+				std::vector< uint32_t > mIndices;
 
-		std::string mName;
-		ci::TriMesh mCachedTriMesh;
-		bool mValidCache;
-};
+				bool mTwoSided;
 
-} } // namespace mndl::assimp
+				std::vector<aiVector3D > mAnimatedPos;
+				std::vector<aiVector3D > mAnimatedNorm;
 
+				std::string mName;
+				ci::TriMesh mCachedTriMesh;
+				bool mValidCache;
+
+		};
+	}
+}

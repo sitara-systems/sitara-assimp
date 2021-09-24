@@ -25,113 +25,113 @@
 #include "cinder/Quaternion.h"
 #include "cinder/Matrix.h"
 
-namespace mndl {
+namespace sitara {
+	namespace assimp {
+		class Node;
 
-class Node;
+		typedef std::shared_ptr< Node > NodeRef;
 
-typedef std::shared_ptr< Node > NodeRef;
+		class Node
+		{
+		public:
+			Node();
+			Node(const std::string& name);
+			virtual ~Node() {};
 
-class Node
-{
-	public:
-		Node();
-		Node( const std::string &name );
-		virtual ~Node() {};
+			void setParent(NodeRef parent);
+			NodeRef getParent() const;
 
-		void setParent( NodeRef parent );
-		NodeRef getParent() const;
+			void addChild(NodeRef child);
 
-		void addChild( NodeRef child );
+			void setOrientation(const ci::quat& q);
+			const ci::quat& getOrientation() const;
 
-		void setOrientation( const ci::quat &q );
-		const ci::quat &getOrientation() const;
+			void setPosition(const ci::vec3& pos);
+			const ci::vec3& getPosition() const;
 
-		void setPosition( const ci::vec3 &pos );
-		const ci::vec3& getPosition() const;
+			void setScale(const ci::vec3& scale);
+			const ci::vec3& getScale() const;
 
-		void setScale( const ci::vec3 &scale );
-		const ci::vec3 &getScale() const;
+			void setInheritOrientation(bool inherit);
+			bool getInheritOrientation() const;
 
-		void setInheritOrientation( bool inherit );
-		bool getInheritOrientation() const;
+			void setInheritScale(bool inherit);
+			bool getInheritScale() const;
 
-		void setInheritScale( bool inherit );
-		bool getInheritScale() const;
+			void setName(const std::string& name);
+			const std::string& getName() const;
 
-		void setName( const std::string &name );
-		const std::string &getName() const;
+			void setInitialState();
+			void resetToInitialState();
+			const ci::vec3& getInitialPosition() const;
+			const ci::quat& getInitialOrientation() const;
+			const ci::vec3& getInitialScale() const;
 
-		void setInitialState();
-		void resetToInitialState();
-		const ci::vec3 &getInitialPosition() const;
-		const ci::quat &getInitialOrientation() const;
-		const ci::vec3 &getInitialScale() const;
+			const ci::quat& getDerivedOrientation() const;
+			const ci::vec3& getDerivedPosition() const;
+			const ci::vec3& getDerivedScale() const;
 
-		const ci::quat &getDerivedOrientation() const;
-		const ci::vec3 &getDerivedPosition() const;
-		const ci::vec3 &getDerivedScale() const;
+			const ci::mat4& getDerivedTransform() const;
 
-		const ci::mat4 &getDerivedTransform() const;
+			void requestUpdate();
 
-		void requestUpdate();
+		protected:
+			/// Shared pointer to parent node.
+			NodeRef mParent;
 
-	protected:
-		/// Shared pointer to parent node.
-		NodeRef mParent;
+			/// Shared pointer vector holding the children.
+			std::vector< NodeRef > mChildren;
 
-		/// Shared pointer vector holding the children.
-		std::vector< NodeRef > mChildren;
+			/// Name of this node.
+			std::string mName;
 
-		/// Name of this node.
-		std::string mName;
+			/// The orientation of the node relative to its parent.
+			ci::quat mOrientation;
 
-		/// The orientation of the node relative to its parent.
-		ci::quat mOrientation;
+			/// The position of the node relative to its parent.
+			ci::vec3 mPosition;
 
-		/// The position of the node relative to its parent.
-		ci::vec3 mPosition;
+			/// Scaling factor applied to this node.
+			ci::vec3 mScale;
 
-		/// Scaling factor applied to this node.
-		ci::vec3 mScale;
+			/// Stores whether this node inherits orientation from its parent.
+			bool mInheritOrientation;
 
-		/// Stores whether this node inherits orientation from its parent.
-		bool mInheritOrientation;
+			mutable bool mNeedsUpdate;
 
-		mutable bool mNeedsUpdate;
+			/// Stores whether this node inherits scale from its parent
+			bool mInheritScale;
 
-		/// Stores whether this node inherits scale from its parent
-		bool mInheritScale;
+			/** Cached combined orientation.
+				This member is the orientation derived by combining the
+				local transformations and those of it's parents.
+				*/
+			mutable ci::quat mDerivedOrientation;
 
-		/** Cached combined orientation.
-		  This member is the orientation derived by combining the
-		  local transformations and those of it's parents.
-		  */
-		mutable ci::quat mDerivedOrientation;
+			/** Cached combined position.
+				This member is the position derived by combining the
+				local transformations and those of it's parents.
+				*/
+			mutable ci::vec3 mDerivedPosition;
 
-		/** Cached combined position.
-		  This member is the position derived by combining the
-		  local transformations and those of it's parents.
-		  */
-		mutable ci::vec3 mDerivedPosition;
+			/** Cached combined scale.
+				This member is the position derived by combining the
+				local transformations and those of it's parents.
+				*/
+			mutable ci::vec3 mDerivedScale;
 
-		/** Cached combined scale.
-		  This member is the position derived by combining the
-		  local transformations and those of it's parents.
-		  */
-		mutable ci::vec3 mDerivedScale;
+			/// The position to use as a base for keyframe animation.
+			ci::vec3 mInitialPosition;
+			/// The orientation to use as a base for keyframe animation.
+			ci::quat mInitialOrientation;
+			/// The scale to use as a base for keyframe animation.
+			ci::vec3 mInitialScale;
 
-		/// The position to use as a base for keyframe animation.
-		ci::vec3 mInitialPosition;
-		/// The orientation to use as a base for keyframe animation.
-		ci::quat mInitialOrientation;
-		/// The scale to use as a base for keyframe animation.
-		ci::vec3 mInitialScale;
+			/// Cached derived transform as a 4x4 matrix
+			mutable ci::mat4 mDerivedTransform;
 
-		/// Cached derived transform as a 4x4 matrix
-		mutable ci::mat4 mDerivedTransform;
-
-		void update() const;
-};
-
-} // namespace mndl
+			void update() const;
+		};
+	}
+}
 

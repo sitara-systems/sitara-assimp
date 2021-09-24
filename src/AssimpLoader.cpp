@@ -29,11 +29,9 @@
 
 using namespace std;
 using namespace ci;
+using namespace sitara::assimp;
 
-namespace mndl { namespace assimp {
-
-static void fromAssimp( const aiMesh *aim, TriMesh *cim )
-{
+static void fromAssimp( const aiMesh *aim, TriMesh *cim ) {
 	// copy vertices
 	for ( unsigned i = 0; i < aim->mNumVertices; ++i ) {
 		cim->appendPosition(fromAssimp(aim->mVertices[i]));
@@ -93,11 +91,11 @@ AssimpLoader::AssimpLoader( fs::path filename ) :
 	// FIXME: aiProcessPreset_TargetRealtime_MaxQuality contains
 	// aiProcess_Debone which is buggy in 3.0.1270
 	unsigned flags = aiProcess_Triangulate |
-					 aiProcess_FlipUVs |
-					 aiProcessPreset_TargetRealtime_Quality |
-					 aiProcess_FindInstances |
-					 aiProcess_ValidateDataStructure |
-					 aiProcess_OptimizeMeshes;
+		aiProcess_FlipUVs |
+		aiProcessPreset_TargetRealtime_Quality |
+		aiProcess_FindInstances |
+		aiProcess_ValidateDataStructure |
+		aiProcess_OptimizeMeshes;
 
 	mImporterRef = shared_ptr< Assimp::Importer >( new Assimp::Importer() );
 	mImporterRef->SetPropertyInteger( AI_CONFIG_PP_SBP_REMOVE,
@@ -221,45 +219,45 @@ AssimpMeshRef AssimpLoader::convertAiMesh( const aiMesh *mesh )
 	aiMaterial *mtl = mScene->mMaterials[ mesh->mMaterialIndex ];
 
 	aiString name;
-	mtl->Get( AI_MATKEY_NAME, name );
+	mtl->Get(AI_MATKEY_NAME, name );
 	app::console() << "material " << fromAssimp( name ) << endl;
 
 	// Culling
 	int twoSided;
-	if ( ( AI_SUCCESS == mtl->Get( AI_MATKEY_TWOSIDED, twoSided ) ) && twoSided )
+	if ( (AI_SUCCESS == mtl->Get(AI_MATKEY_TWOSIDED, twoSided ) ) && twoSided )
 	{
 		assimpMeshRef->mTwoSided = true;
-		//assimpMeshRef->mMaterial.setFace( GL_FRONT_AND_BACK );
+		assimpMeshRef->mMaterial.mFace = GL_FRONT_AND_BACK;
 		app::console() << " two sided" << endl;
 	}
 	else
 	{
 		assimpMeshRef->mTwoSided = false;
-		//assimpMeshRef->mMaterial.setFace( GL_FRONT );
+		assimpMeshRef->mMaterial.mFace = GL_FRONT;
 	}
 
 	aiColor4D dcolor, scolor, acolor, ecolor;
-	if ( AI_SUCCESS == mtl->Get( AI_MATKEY_COLOR_DIFFUSE, dcolor ) )
+	if (AI_SUCCESS == mtl->Get(AI_MATKEY_COLOR_DIFFUSE, dcolor ) )
 	{
-		//assimpMeshRef->mMaterial.setDiffuse( fromAssimp( dcolor ) );
+		assimpMeshRef->mMaterial.mDiffuse = fromAssimp( dcolor );
 		app::console() << " diffuse: " << fromAssimp( dcolor ) << endl;
 	}
 
-	if ( AI_SUCCESS == mtl->Get( AI_MATKEY_COLOR_SPECULAR, scolor ) )
+	if (AI_SUCCESS == mtl->Get(AI_MATKEY_COLOR_SPECULAR, scolor ) )
 	{
-		//assimpMeshRef->mMaterial.setSpecular( fromAssimp( scolor ) );
+		assimpMeshRef->mMaterial.mSpecular = fromAssimp( scolor );
 		app::console() << " specular: " << fromAssimp( scolor ) << endl;
 	}
 
-	if ( AI_SUCCESS == mtl->Get( AI_MATKEY_COLOR_AMBIENT, acolor ) )
+	if (AI_SUCCESS == mtl->Get(AI_MATKEY_COLOR_AMBIENT, acolor ) )
 	{
-		//assimpMeshRef->mMaterial.setAmbient( fromAssimp( acolor ) );
+		assimpMeshRef->mMaterial.mAmbient = fromAssimp( acolor );
 		app::console() << " ambient: " << fromAssimp( acolor ) << endl;
 	}
 
-	if ( AI_SUCCESS == mtl->Get( AI_MATKEY_COLOR_EMISSIVE, ecolor ) )
+	if (AI_SUCCESS == mtl->Get(AI_MATKEY_COLOR_EMISSIVE, ecolor ) )
 	{
-		//assimpMeshRef->mMaterial.setEmission( fromAssimp( ecolor ) );
+		assimpMeshRef->mMaterial.mEmission = fromAssimp( ecolor );
 		app::console() << " emission: " << fromAssimp( ecolor ) << endl;
 	}
 
@@ -296,7 +294,7 @@ AssimpMeshRef AssimpLoader::convertAiMesh( const aiMesh *mesh )
 	aiString texPath;
 
 	// TODO: handle other aiTextureTypes
-	if ( AI_SUCCESS == mtl->GetTexture( aiTextureType_DIFFUSE, texIndex, &texPath ) )
+	if (AI_SUCCESS == mtl->GetTexture(aiTextureType_DIFFUSE, texIndex, &texPath ) )
 	{
 		app::console() << " diffuse texture " << texPath.data;
 		fs::path texFsPath( texPath.data );
@@ -309,7 +307,7 @@ AssimpMeshRef AssimpLoader::convertAiMesh( const aiMesh *mesh )
 		// texture wrap
 		gl::Texture::Format format;
 		int uwrap;
-		if ( AI_SUCCESS == mtl->Get( AI_MATKEY_MAPPINGMODE_U_DIFFUSE( 0 ), uwrap ) )
+		if (AI_SUCCESS == mtl->Get(AI_MATKEY_MAPPINGMODE_U_DIFFUSE( 0 ), uwrap ) )
 		{
 			switch ( uwrap )
 			{
@@ -336,7 +334,7 @@ AssimpMeshRef AssimpLoader::convertAiMesh( const aiMesh *mesh )
 			}
 		}
 		int vwrap;
-		if ( AI_SUCCESS == mtl->Get( AI_MATKEY_MAPPINGMODE_V_DIFFUSE( 0 ), vwrap ) )
+		if (AI_SUCCESS == mtl->Get(AI_MATKEY_MAPPINGMODE_V_DIFFUSE( 0 ), vwrap ) )
 		{
 			switch ( vwrap )
 			{
@@ -575,6 +573,16 @@ const gl::Texture2dRef &AssimpLoader::getAssimpNodeTexture( const string &name, 
 		throw AssimpLoaderExc( "node " + name + " not found." );
 }
 
+/*
+Material& AssimpLoader::getAssimpNodeMaterial(const std::string& name, size_t n) {
+	// TODO: insert return statement here
+}
+
+const Material& AssimpLoader::getAssimpNodeMaterial(const std::string& name, size_t n) const {
+	// TODO: insert return statement here
+}
+*/
+
 void AssimpLoader::setNodeOrientation( const string &name, const quat &rot )
 {
 	AssimpNodeRef node = getAssimpNode( name );
@@ -650,7 +658,7 @@ void AssimpLoader::updateSkinning()
 			assimpMeshRef->mValidCache = false;
 
 			assimpMeshRef->mAnimatedPos.assign( assimpMeshRef->mAnimatedPos.size(),
-					aiVector3D( 0, 0, 0 ) );
+				aiVector3D( 0, 0, 0 ) );
 			if ( mesh->HasNormals() )
 			{
 				assimpMeshRef->mAnimatedNorm.assign( assimpMeshRef->mAnimatedNorm.size(),
@@ -780,42 +788,53 @@ void AssimpLoader::update()
 	updateMeshes();
 }
 
-void AssimpLoader::draw()
-{
+void AssimpLoader::draw() {
 	vector< AssimpNodeRef >::const_iterator it = mMeshNodes.begin();
-	for ( ; it != mMeshNodes.end(); ++it )
-	{
+	for ( ; it != mMeshNodes.end(); ++it ) {
 		AssimpNodeRef nodeRef = *it;
 
 		vector< AssimpMeshRef >::const_iterator meshIt = nodeRef->mMeshes.begin();
 		for ( ; meshIt != nodeRef->mMeshes.end(); ++meshIt ) {
 			AssimpMeshRef assimpMeshRef = *meshIt;
+			auto shaderDef = ci::gl::ShaderDef().lambert().color();
 
-			// Texture Binding
 			if (mTexturesEnabled && assimpMeshRef->mTexture) {
-				ci::gl::ScopedGlslProg shader(ci::gl::getStockShader(ci::gl::ShaderDef().lambert().color().texture()));
-				ci::gl::ScopedTextureBind tex(assimpMeshRef->mTexture);
+				shaderDef.texture();
+				assimpMeshRef->mTexture->bind();
+			}
 
-				// Culling
-				if (assimpMeshRef->mTwoSided)
-					gl::enable(GL_CULL_FACE);
-				else
-					gl::disable(GL_CULL_FACE);
-
-				gl::draw(assimpMeshRef->mCachedTriMesh);
+			if (mMaterialsEnabled) {
+				//assimpMeshRef->mMaterial.apply();
 			}
 			else {
-				// Culling
-				if (assimpMeshRef->mTwoSided)
-					gl::enable(GL_CULL_FACE);
-				else
-					gl::disable(GL_CULL_FACE);
+				ci::gl::color(assimpMeshRef->mMaterial.mDiffuse);
+			}
 
-				gl::draw(assimpMeshRef->mCachedTriMesh);
+			// Texture Binding
+			//if (mTexturesEnabled && assimpMeshRef->mTexture)
+
+				/*
+				if (mMaterialsEnabled) {
+					assimpMeshRef->mMaterial.apply();
+				}
+				else {
+					gl::color(assimpMeshRef->mMaterial.getDiffuse());
+				}
+			*/
+
+			if (assimpMeshRef->mTwoSided) {
+				gl::enable(GL_CULL_FACE);
+			}
+			else {
+				gl::disable(GL_CULL_FACE);
+			}
+
+			ci::gl::ScopedGlslProg scopedShader(ci::gl::getStockShader(shaderDef));
+			gl::draw(assimpMeshRef->mCachedTriMesh);
+
+			if (mTexturesEnabled && assimpMeshRef->mTexture) {
+				assimpMeshRef->mTexture->unbind();
 			}
 		}
 	}
 }
-
-} } // namespace mndl::assimp
-

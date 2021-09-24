@@ -19,8 +19,7 @@
 
 using namespace ci;
 using namespace std;
-
-namespace mndl {
+using namespace sitara::assimp;
 
 Node::Node() :
 	mScale( vec3(1) ),
@@ -238,5 +237,3 @@ void Node::requestUpdate()
 		(*it)->requestUpdate();
 	}
 }
-
-} // namespace mndl
