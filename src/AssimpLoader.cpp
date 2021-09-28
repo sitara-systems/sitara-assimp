@@ -24,6 +24,7 @@
 #include "cinder/ImageIo.h"
 #include "cinder/CinderMath.h"
 #include "cinder/Utilities.h"
+#include "cinder/Log.h"
 
 #include "AssimpLoader.h"
 
@@ -220,7 +221,7 @@ AssimpMeshRef AssimpLoader::convertAiMesh( const aiMesh *mesh )
 
 	aiString name;
 	mtl->Get(AI_MATKEY_NAME, name );
-	app::console() << "material " << fromAssimp( name ) << endl;
+	CI_LOG_D("Processing Material " << fromAssimp( name ));
 
 	// Culling
 	int twoSided;
@@ -228,7 +229,7 @@ AssimpMeshRef AssimpLoader::convertAiMesh( const aiMesh *mesh )
 	{
 		assimpMeshRef->mTwoSided = true;
 		assimpMeshRef->mMaterial.mFace = GL_FRONT_AND_BACK;
-		app::console() << " two sided" << endl;
+		CI_LOG_D("\tTwo-Sided");
 	}
 	else
 	{
@@ -240,25 +241,25 @@ AssimpMeshRef AssimpLoader::convertAiMesh( const aiMesh *mesh )
 	if (AI_SUCCESS == mtl->Get(AI_MATKEY_COLOR_DIFFUSE, dcolor ) )
 	{
 		assimpMeshRef->mMaterial.mDiffuse = fromAssimp( dcolor );
-		app::console() << " diffuse: " << fromAssimp( dcolor ) << endl;
+		CI_LOG_D("\tDiffuse Color: " << fromAssimp( dcolor ));
 	}
 
 	if (AI_SUCCESS == mtl->Get(AI_MATKEY_COLOR_SPECULAR, scolor ) )
 	{
 		assimpMeshRef->mMaterial.mSpecular = fromAssimp( scolor );
-		app::console() << " specular: " << fromAssimp( scolor ) << endl;
+		CI_LOG_D("\tSpecular Color: " << fromAssimp( scolor ));
 	}
 
 	if (AI_SUCCESS == mtl->Get(AI_MATKEY_COLOR_AMBIENT, acolor ) )
 	{
 		assimpMeshRef->mMaterial.mAmbient = fromAssimp( acolor );
-		app::console() << " ambient: " << fromAssimp( acolor ) << endl;
+		CI_LOG_D("\tAmbient Color: " << fromAssimp( acolor ));
 	}
 
 	if (AI_SUCCESS == mtl->Get(AI_MATKEY_COLOR_EMISSIVE, ecolor ) )
 	{
 		assimpMeshRef->mMaterial.mEmission = fromAssimp( ecolor );
-		app::console() << " emission: " << fromAssimp( ecolor ) << endl;
+		CI_LOG_D("\tEmissive Color: " << fromAssimp( ecolor ));
 	}
 
 	/*
@@ -296,13 +297,12 @@ AssimpMeshRef AssimpLoader::convertAiMesh( const aiMesh *mesh )
 	// TODO: handle other aiTextureTypes
 	if (AI_SUCCESS == mtl->GetTexture(aiTextureType_DIFFUSE, texIndex, &texPath ) )
 	{
-		app::console() << " diffuse texture " << texPath.data;
 		fs::path texFsPath( texPath.data );
 		fs::path modelFolder = mFilePath.parent_path();
 		fs::path relTexPath = texFsPath.parent_path();
 		fs::path texFile = texFsPath.filename();
 		fs::path realPath = modelFolder / relTexPath / texFile;
-		app::console() << " [" << realPath.string() << "]" << endl;
+		CI_LOG_D("\tDiffuse Texture : " << texPath.data << " [" << realPath.string() << "]");
 
 		// texture wrap
 		gl::Texture::Format format;
@@ -389,15 +389,15 @@ AssimpMeshRef AssimpLoader::convertAiMesh( const aiMesh *mesh )
 
 void AssimpLoader::loadAllMeshes()
 {
-	app::console() << "loading model " << mFilePath.filename().string() <<
-		" [" << mFilePath.string() << "] " << endl;
-	for ( unsigned i = 0; i < mScene->mNumMeshes; ++i )
-	{
+	CI_LOG_D("Loading Model " << mFilePath.filename().string() << " [" << mFilePath.string() << "] ");
+	for ( unsigned i = 0; i < mScene->mNumMeshes; ++i ) {
 		string name = fromAssimp( mScene->mMeshes[ i ]->mName );
-		app::console() << "loading mesh " << i;
-		if ( name != "" )
-			app::console() << " [" << name << "]";
-		app::console() << endl;
+		if (name != "") {
+			CI_LOG_D("Loading Mesh " << i << " [" << name << "]");
+		}
+		else {
+			CI_LOG_D("Loading Mesh " << i);
+		}
 		AssimpMeshRef assimpMeshRef = convertAiMesh( mScene->mMeshes[ i ] );
 		mModelMeshes.push_back( assimpMeshRef );
 	}
@@ -407,7 +407,7 @@ void AssimpLoader::loadAllMeshes()
 	setNormalizedTime(0);
 #endif
 
-	app::console() << "finished loading model " << mFilePath.filename().string() << endl;
+	CI_LOG_D("Finished loading model " << mFilePath.filename().string());
 }
 
 void AssimpLoader::updateAnimation( size_t animationIndex, double currentTime )
