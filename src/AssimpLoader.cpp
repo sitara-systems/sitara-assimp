@@ -32,7 +32,14 @@ using namespace std;
 using namespace ci;
 using namespace sitara::assimp;
 
-static void fromAssimp( const aiMesh *aim, TriMesh *cim ) {
+static TriMeshRef fromAssimp( const aiMesh *aim) {
+    ci::TriMesh::Format format;
+    format.mPositionsDims = 3;
+	format.mNormalsDims = 3;
+    format.mTexCoords0Dims = 2;
+    format.mColorsDims = 4;
+    TriMeshRef cim = ci::TriMesh::create(format);
+
 	// copy vertices
 	for ( unsigned i = 0; i < aim->mNumVertices; ++i ) {
 		cim->appendPosition(fromAssimp(aim->mVertices[i]));
@@ -79,6 +86,8 @@ static void fromAssimp( const aiMesh *aim, TriMesh *cim ) {
 							 aim->mFaces[ i ].mIndices[ 1 ],
 							 aim->mFaces[ i ].mIndices[ 2 ] );
 	}
+
+	return cim;
 }
 
 AssimpLoader::AssimpLoader( fs::path filename ) :
@@ -365,9 +374,9 @@ AssimpMeshRef AssimpLoader::convertAiMesh( const aiMesh *mesh )
 	}
 
 	assimpMeshRef->mAiMesh = mesh;
-	fromAssimp( mesh, &assimpMeshRef->mCachedTriMesh );
+    assimpMeshRef->mCachedTriMesh = fromAssimp(mesh);
 	assimpMeshRef->mValidCache = true;
-	assimpMeshRef->mAnimatedPos.resize( mesh->mNumVertices );
+    assimpMeshRef->mAnimatedPos.resize(mesh->mNumVertices);
 	if ( mesh->HasNormals() )
 	{
 		assimpMeshRef->mAnimatedNorm.resize( mesh->mNumVertices );
@@ -389,7 +398,8 @@ AssimpMeshRef AssimpLoader::convertAiMesh( const aiMesh *mesh )
 
 void AssimpLoader::loadAllMeshes()
 {
-	CI_LOG_D("Loading Model " << mFilePath.filename().string() << " [" << mFilePath.string() << "] ");
+	CI_LOG_I("Loading Model " << mFilePath.filename().string() << " [" << mFilePath.string() << "] ");
+    CI_LOG_D("Model contains " << mScene->mNumMeshes << " meshes.");
 	for ( unsigned i = 0; i < mScene->mNumMeshes; ++i ) {
 		string name = fromAssimp( mScene->mMeshes[ i ]->mName );
 		if (name != "") {
@@ -537,7 +547,7 @@ size_t AssimpLoader::getAssimpNodeNumMeshes( const string &name )
 		return 0;
 }
 
-TriMesh &AssimpLoader::getAssimpNodeMesh( const string &name, size_t n /* = 0 */ )
+TriMeshRef AssimpLoader::getAssimpNodeMesh( const string &name, size_t n /* = 0 */ )
 {
 	AssimpNodeRef node = getAssimpNode( name );
 	if ( node && n < node->mMeshes.size() )
@@ -546,7 +556,7 @@ TriMesh &AssimpLoader::getAssimpNodeMesh( const string &name, size_t n /* = 0 */
 		throw AssimpLoaderExc( "node " + name + " not found." );
 }
 
-const TriMesh &AssimpLoader::getAssimpNodeMesh( const string &name, size_t n /* = 0 */ ) const
+const TriMeshRef AssimpLoader::getAssimpNodeMesh( const string &name, size_t n /* = 0 */ ) const
 {
 	const AssimpNodeRef node = getAssimpNode( name );
 	if ( node && n < node->mMeshes.size() )
@@ -718,8 +728,8 @@ void AssimpLoader::updateMeshes()
 			{
 				// animated data
 				std::vector<vec3> vertices;
-				size_t numVertices = assimpMeshRef->mCachedTriMesh.getNumVertices();
-				const auto& positions = assimpMeshRef->mCachedTriMesh.getPositions<3>();
+				size_t numVertices = assimpMeshRef->mCachedTriMesh->getNumVertices();
+				const auto& positions = assimpMeshRef->mCachedTriMesh->getPositions<3>();
 				for (int i = 0; i < numVertices; i++) {
 					vertices.push_back(positions[i]);
 				}
@@ -727,7 +737,7 @@ void AssimpLoader::updateMeshes()
 				for( size_t v = 0; v < vertices.size(); ++v )
 					vertices[v] = fromAssimp( assimpMeshRef->mAnimatedPos[ v ] );
 
-				std::vector< vec3 > &normals = assimpMeshRef->mCachedTriMesh.getNormals();
+				std::vector< vec3 > &normals = assimpMeshRef->mCachedTriMesh->getNormals();
 				for( size_t v = 0; v < normals.size(); ++v )
 					normals[v] = fromAssimp( assimpMeshRef->mAnimatedNorm[ v ] );
 			}
@@ -737,8 +747,8 @@ void AssimpLoader::updateMeshes()
 				const aiMesh *mesh = assimpMeshRef->mAiMesh;
 
 				std::vector<vec3> vertices;
-				size_t numVertices = assimpMeshRef->mCachedTriMesh.getNumVertices();
-				const auto& positions = assimpMeshRef->mCachedTriMesh.getPositions<3>();
+				size_t numVertices = assimpMeshRef->mCachedTriMesh->getNumVertices();
+				const auto& positions = assimpMeshRef->mCachedTriMesh->getPositions<3>();
 				for (int i = 0; i < numVertices; i++) {
 					vertices.push_back(positions[i]);
 				}
@@ -746,7 +756,7 @@ void AssimpLoader::updateMeshes()
 				for( size_t v = 0; v < vertices.size(); ++v )
 					vertices[v] = fromAssimp( mesh->mVertices[ v ] );
 
-				std::vector< vec3 > &normals = assimpMeshRef->mCachedTriMesh.getNormals();
+				std::vector< vec3 > &normals = assimpMeshRef->mCachedTriMesh->getNormals();
 				for( size_t v = 0; v < normals.size(); ++v )
 					normals[v] = fromAssimp( mesh->mNormals[ v ] );
 			}
@@ -807,7 +817,7 @@ void AssimpLoader::draw() {
 				//assimpMeshRef->mMaterial.apply();
 			}
 			else {
-				ci::gl::color(assimpMeshRef->mMaterial.mDiffuse);
+				//ci::gl::color(assimpMeshRef->mMaterial.mDiffuse);
 			}
 
 			// Texture Binding
@@ -825,16 +835,17 @@ void AssimpLoader::draw() {
 			if (assimpMeshRef->mTwoSided) {
 				gl::enable(GL_CULL_FACE);
 			}
-			else {
-				gl::disable(GL_CULL_FACE);
-			}
 
 			ci::gl::ScopedGlslProg scopedShader(ci::gl::getStockShader(shaderDef));
-			gl::draw(assimpMeshRef->mCachedTriMesh);
+			gl::draw(*(assimpMeshRef->mCachedTriMesh));
 
 			if (mTexturesEnabled && assimpMeshRef->mTexture) {
 				assimpMeshRef->mTexture->unbind();
 			}
+
+			if (assimpMeshRef->mTwoSided) {
+                gl::disable(GL_CULL_FACE);
+            }
 		}
 	}
 }

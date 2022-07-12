@@ -147,9 +147,9 @@ namespace sitara {
 				//! Returns the total number of meshes contained by the node called \a name.
 				size_t getAssimpNodeNumMeshes( const std::string &name );
 				//! Returns the \a n'th cinder::TriMesh contained by the node called \a name.
-				ci::TriMesh &getAssimpNodeMesh( const std::string &name, size_t n = 0 );
+				ci::TriMeshRef getAssimpNodeMesh( const std::string &name, size_t n = 0 );
 				//! Returns the \a n'th cinder::TriMesh contained by the node called \a name.
-				const ci::TriMesh &getAssimpNodeMesh( const std::string &name, size_t n = 0 ) const;
+				const ci::TriMeshRef getAssimpNodeMesh( const std::string &name, size_t n = 0 ) const;
 
 				//! Returns the texture of the \a n'th mesh in the node called \a name.
 				ci::gl::Texture2dRef &getAssimpNodeTexture( const std::string &name, size_t n = 0 );
@@ -187,9 +187,9 @@ namespace sitara {
 				//! Returns the total number of meshes in the model.
 				size_t getNumMeshes() const { return mModelMeshes.size(); }
 				//! Returns the \a n'th mesh in the model.
-				ci::TriMesh &getMesh( size_t n ) { return mModelMeshes[ n ]->mCachedTriMesh; }
+				ci::TriMeshRef getMesh( size_t n ) { return mModelMeshes[ n ]->mCachedTriMesh; }
 				//! Returns the \a n'th mesh in the model.
-				const ci::TriMesh &getMesh( size_t n ) const { return mModelMeshes[ n ]->mCachedTriMesh; }
+				const ci::TriMeshRef getMesh( size_t n ) const { return mModelMeshes[ n ]->mCachedTriMesh; }
 
 				//! Returns the texture of the \a n'th mesh in the model.
 				ci::gl::Texture2dRef getTexture( size_t n ) { return mModelMeshes[ n ]->mTexture; }

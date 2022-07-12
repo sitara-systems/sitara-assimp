@@ -41,7 +41,7 @@ namespace sitara {
 
 		};
 
-		class AssimpMesh {
+		struct AssimpMesh {
 			public:
 				const aiMesh *mAiMesh;
 
@@ -57,7 +57,7 @@ namespace sitara {
 				std::vector<aiVector3D > mAnimatedNorm;
 
 				std::string mName;
-				ci::TriMesh mCachedTriMesh;
+				ci::TriMeshRef mCachedTriMesh;
 				bool mValidCache;
 
 		};
