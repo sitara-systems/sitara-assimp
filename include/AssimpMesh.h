@@ -33,12 +33,13 @@ namespace sitara {
 		typedef std::shared_ptr< AssimpMesh > AssimpMeshRef;
 
 		struct Material {
+            std::string mName;
 			int mFace;
 			ci::ColorAf mDiffuse;
 			ci::ColorAf mSpecular;
 			ci::ColorAf mAmbient;
 			ci::ColorAf mEmission;
-
+            float mShininess;
 		};
 
 		struct AssimpMesh {

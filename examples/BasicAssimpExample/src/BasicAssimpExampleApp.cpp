@@ -1,9 +1,10 @@
 #include "cinder/app/App.h"
 #include "cinder/app/RendererGl.h"
 #include "cinder/gl/gl.h"
-#include "cinder/params/Params.h"
 #include "cinder/CameraUi.h"
 #include "cinder/Timeline.h"
+#include "cinder/Log.h"
+#include "cinder/CinderImGui.h"
 #include "AssimpLoader.h"
 
 using namespace ci;
@@ -18,56 +19,178 @@ public:
 	void mouseDown(MouseEvent event) override;
 	void mouseDrag(MouseEvent event) override;
 	void mouseWheel(MouseEvent event) override;
-	sitara::assimp::AssimpLoader mAssimpLoader;
+    void keyDown(KeyEvent event) override;
+	std::vector<sitara::assimp::AssimpLoader> mAssimpModels;
+    std::vector<std::string> mAssimpModelNames;
 
 	ci::CameraUi mCameraUi;
 	ci::CameraPersp mCamera;
 	ci::Anim<ci::vec2> mMousePos;
+    ci::vec3 mModelAngles;
+    ci::vec3 mCameraAngles;
+    ci::gl::GlslProgRef mCustomShader;
+    ci::ColorA mTintColor;
+    float mTintRatio;
 
-	ci::params::InterfaceGl mParams;
 	bool mEnableTextures;
 	bool mEnableWireframe;
+    bool mEnableMaterials;
 	bool mEnableSkinning;
 	bool mEnableAnimation;
+    bool mEnableCustomShader;
 	bool mDrawBBox;
 	float mFps;
+    int mModelSelect = 0;
 };
 
 void BasicAssimpExampleApp::setup()
 {
-	mAssimpLoader = sitara::assimp::AssimpLoader(getAssetPath("astroboy_walk.dae"));
+    CI_LOG_I("Loading 3d models: ");
+    auto teapot = sitara::assimp::AssimpLoader("../../../assets/models/teapot.obj");
+    mAssimpModels.push_back(teapot);
+    mAssimpModelNames.push_back("Plain Utah Teapot");
+
+    auto teapot_red = sitara::assimp::AssimpLoader("../../../assets/models/teapot_red.obj");
+    mAssimpModels.push_back(teapot_red);
+    mAssimpModelNames.push_back("Red Utah Teapot (.obj)");
+
+	auto teapot_ply = sitara::assimp::AssimpLoader("../../../assets/models/teapot_red.ply");
+    mAssimpModels.push_back(teapot_ply);
+    mAssimpModelNames.push_back("Red Utah Teapot (.ply)");
+
+	auto teapot_tex = sitara::assimp::AssimpLoader("../../../assets/models/teapot_textured.obj");
+    mAssimpModels.push_back(teapot_tex);
+    mAssimpModelNames.push_back("Textured Utah Teapot");
+
+	auto spot = sitara::assimp::AssimpLoader("../../../assets/models/spot.obj");
+    mAssimpModels.push_back(spot);
+    mAssimpModelNames.push_back("Spot");
+
+    auto benchy_stl = sitara::assimp::AssimpLoader("../../../assets/models/3DBenchy.stl");
+    mAssimpModels.push_back(benchy_stl);
+    mAssimpModelNames.push_back("3DBenchy (.stl)");
+
+    auto benchy_3mf = sitara::assimp::AssimpLoader("../../../assets/models/3DBenchy.3mf");
+    mAssimpModels.push_back(benchy_3mf);
+    mAssimpModelNames.push_back("3DBenchy (.3mf)");
+
+    auto astroboy = sitara::assimp::AssimpLoader("../../../assets/models/astroboy_walk.dae");
+    mAssimpModels.push_back(astroboy);
+    mAssimpModelNames.push_back("Astroboy (.dae)");
+
+    auto tiktaalik = sitara::assimp::AssimpLoader("../../../assets/models/Tiktaalikcolor.ply");
+    mAssimpModels.push_back(tiktaalik);
+    mAssimpModelNames.push_back("Tiktaalik");
+
+    mEnableWireframe = false;
+    mEnableTextures = true;
+    mEnableMaterials = false;
+    mEnableSkinning = false;
+    mEnableAnimation = false;
+    mEnableCustomShader = false;
+    mDrawBBox = false;
 
 	mCamera.setPerspective(60, getWindowAspectRatio(), 1.0f, 20000.0f);
-	mCamera.lookAt(vec3(0.0f, 7.0f, 20.0), vec3(0.0, 7.0, 0.0), vec3(0, 1, 0));
-	mCameraUi = CameraUi(&mCamera);
+    mCamera.lookAt(ci::vec3(-20, 2, -4), ci::vec3(0), ci::vec3(0, 1, 0));
+    mCameraUi = ci::CameraUi(&mCamera);
 
-	mParams = params::InterfaceGl("Parameters", vec2(200, 300));
-	mEnableWireframe = false;
-	mParams.addParam("Wireframe", &mEnableWireframe);
-	mEnableTextures = true;
-	mParams.addParam("Textures", &mEnableTextures);
-	mEnableSkinning = true;
-	mParams.addParam("Skinning", &mEnableSkinning);
-	mEnableAnimation = false;
-	mParams.addParam("Animation", &mEnableAnimation);
-	mDrawBBox = false;
-	mParams.addParam("Bounding box", &mDrawBBox);
-	mParams.addSeparator();
-	mParams.addParam("Fps", &mFps, "", true);
+    mCameraAngles = ci::vec3(0.0);
+    mModelAngles = ci::vec3(0.0);
+    
+    auto vertexShader = ci::app::loadAsset(ci::app::getAssetPath("../../../assets/data/glsl/tint.vert"));
+    auto fragmentShader = ci::app::loadAsset(ci::app::getAssetPath("../../../assets/data/glsl/lambert.frag"));
+
+    mCustomShader = ci::gl::GlslProg::create(vertexShader,
+                                             fragmentShader);
+
+    mTintColor = ci::ColorA(0, 1, 0, 1);
+    mTintRatio = 0.5f;
+
+	ImGui::Initialize();
 }
 
 void BasicAssimpExampleApp::update()
 {
-	mAssimpLoader.enableTextures(mEnableTextures);
-	mAssimpLoader.enableSkinning(mEnableSkinning);
-	mAssimpLoader.enableAnimation(mEnableAnimation);
-	mAssimpLoader.disableMaterials();
+    ImGui::Begin("Assimp Test Menu");
+    bool isChanged;
+    if (ImGui::CollapsingHeader("Model Selection", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::ListBoxHeader("Preloaded Models");
+        int counter = 0;
+        for (auto& item : mAssimpModelNames) {
+            if (ImGui::Selectable(item.c_str(), counter == mModelSelect)) {
+                mModelSelect = counter;
+            }
+            counter++;
+        }
+        ImGui::ListBoxFooter();
 
-	/*
-	double time = fmod(getElapsedSeconds(), mAssimpLoader.getAnimationDuration(0));
-	mAssimpLoader.setTime(time);
-	mAssimpLoader.update();
-	*/
+    }
+    if (ImGui::CollapsingHeader("Render Options", ImGuiTreeNodeFlags_DefaultOpen)) {
+            isChanged = ImGui::Checkbox("Use Wireframe", &mEnableWireframe);
+        isChanged = ImGui::Checkbox("Use Textures", &mEnableTextures);
+        if (isChanged) {
+            for (auto& model : mAssimpModels) {
+                model.enableTextures(mEnableTextures);
+            }
+        }
+        isChanged = ImGui::Checkbox("Use Materials", &mEnableMaterials);
+        if (isChanged) {
+            for (auto& model : mAssimpModels) {
+                model.enableMaterials(mEnableMaterials);
+            }
+        }
+        isChanged = ImGui::Checkbox("Use Skinning", &mEnableSkinning);
+        if (isChanged) {
+            for (auto& model : mAssimpModels) {
+                model.enableSkinning(mEnableSkinning);
+            }
+        }
+        isChanged = ImGui::Checkbox("Use Animation", &mEnableAnimation);
+        if (isChanged) {
+            for (auto& model : mAssimpModels) {
+                model.enableAnimation(mEnableAnimation);
+            }
+        }
+        isChanged = ImGui::Checkbox("Use Custom Shader", &mEnableCustomShader);
+        if (isChanged) {
+            for (auto& model : mAssimpModels) {
+                model.enableCustomShader(mEnableCustomShader);
+                model.setCustomShader(mCustomShader);
+            }
+        }
+        isChanged = ImGui::Checkbox("Draw BBox", &mDrawBBox);
+    }
+
+    if (ImGui::CollapsingHeader("Camera Options", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ci::vec3 eyePoint = mCamera.getEyePoint();
+        ci::vec3 up = mCamera.getWorldUp();
+        mCameraAngles = glm::eulerAngles(mCamera.getOrientation());
+
+        isChanged = ImGui::SliderFloat3("Eye Position", (float*)&eyePoint, -100, 100);
+        if (isChanged) {
+            mCamera.setEyePoint(eyePoint);
+        }
+        isChanged = ImGui::SliderFloat3("Camera Rotation", (float*)&mCameraAngles, -2.0f * M_PI, 2.0f * M_PI);
+        if (isChanged) {
+            mCamera.setOrientation(ci::quat(mCameraAngles));
+        }
+        isChanged = ImGui::SliderFloat3("Object Rotation", (float*)&mModelAngles, -2.0f * M_PI, 2.0f * M_PI);
+        isChanged = ImGui::Button("Reset Camera");
+        if (isChanged) {
+            mCamera.lookAt(vec3(0.0, 7.0, 20.0), vec3(0.0, 0.0, 0.0), vec3(0, 1, 0));
+        }
+    }
+    if (ImGui::CollapsingHeader("Custom Shader Options", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::ColorPicker4("Tint Color", &mTintColor);
+        ImGui::SliderFloat("Tint Ratio", &mTintRatio, 0.0f, 1.0f);
+    }
+    ImGui::End();
+
+    if (mEnableAnimation && mAssimpModels[mModelSelect].getNumAnimations()) {
+        double time = fmod(getElapsedSeconds(), mAssimpModels[mModelSelect].getAnimationDuration(0));
+        mAssimpModels[mModelSelect].setTime(time);
+        mAssimpModels[mModelSelect].update();    
+    }
 
 	mFps = getAverageFps();
 }
@@ -86,20 +209,23 @@ void BasicAssimpExampleApp::draw() {
 		ci::gl::enableWireframe();
 	}
 
-	mAssimpLoader.draw();
+    if (mEnableCustomShader) {
+        mCustomShader->uniform("tintColor", mTintColor);
+        mCustomShader->uniform("tintRatio", mTintRatio);
+    }
+
+	mAssimpModels[mModelSelect].draw();
 
 	if (mEnableWireframe) {
 		ci::gl::disableWireframe();
 	}
 
 	if (mDrawBBox) {
-		ci::gl::drawStrokedCube(mAssimpLoader.getBoundingBox());
+		ci::gl::drawStrokedCube(mAssimpModels[mModelSelect].getBoundingBox());
 	}
 
 	ci::gl::disableDepthRead();
 	ci::gl::disableDepthWrite();
-
-	mParams.draw();
 }
 
 void BasicAssimpExampleApp::mouseDown(MouseEvent event) {
@@ -117,6 +243,34 @@ void BasicAssimpExampleApp::mouseDrag(MouseEvent event) {
 
 void BasicAssimpExampleApp::mouseWheel(MouseEvent event) {
 	mCameraUi.mouseWheel(event.getWheelIncrement());
+}
+
+void BasicAssimpExampleApp::keyDown(KeyEvent event) {
+    if (event.getCode() == KeyEvent::KEY_UP) {
+        ci::vec3 right, up;
+        mCamera.getBillboardVectors(&right, &up);
+        right *= 0;
+        up *= 10;
+        mCamera.setEyePoint(mCamera.getEyePoint() - right + up);    
+    } else if (event.getCode() == KeyEvent::KEY_DOWN) {
+        ci::vec3 right, up;
+        mCamera.getBillboardVectors(&right, &up);
+        right *= 0;
+        up *= -10;
+        mCamera.setEyePoint(mCamera.getEyePoint() - right + up);    
+    } else if (event.getCode() == KeyEvent::KEY_RIGHT) {
+        ci::vec3 right, up;
+        mCamera.getBillboardVectors(&right, &up);
+        right *= 10;
+        up *= 0;
+        mCamera.setEyePoint(mCamera.getEyePoint() - right + up);    
+    } else if (event.getCode() == KeyEvent::KEY_LEFT) {
+        ci::vec3 right, up;
+        mCamera.getBillboardVectors(&right, &up);
+        right *= -10;
+        up *= 0;
+        mCamera.setEyePoint(mCamera.getEyePoint() - right + up);
+    }
 }
 
 CINDER_APP(BasicAssimpExampleApp, RendererGl, [=](cinder::app::App::Settings* settings) {

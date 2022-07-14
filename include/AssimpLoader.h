@@ -164,6 +164,19 @@ namespace sitara {
 				//! Returns all node names in the model in a std::vector as std::string's.
 				const std::vector< std::string > &getNodeNames() { return mNodeNames; }
 
+				// Setter and getter for setting a custom shader program.  To use this program, you'll need to
+				// call `enableCustomShader()`!
+                void setCustomShader(ci::gl::GlslProgRef program) {
+                    mCustomShaderProgram = program;
+                }
+                ci::gl::GlslProgRef getCustomShader() { return mCustomShaderProgram; }
+
+				// Enables the usage of a custom shader during draw; disables all other draw options!
+				// If you enable this, you're on your own!
+                void enableCustomShader(bool enable = true) { mCustomShaderEnabled = enable; }
+				// Disables the usage of a custom shader
+                void disableCustomShader() { mCustomShaderEnabled = false; }
+
 				//! Enables/disables the usage of materials during draw.
 				void enableMaterials( bool enable = true ) { mMaterialsEnabled = enable; }
 				//! Disables the usage of materials during draw.
@@ -239,6 +252,10 @@ namespace sitara {
 				bool mTexturesEnabled;
 				bool mSkinningEnabled;
 				bool mAnimationEnabled;
+                bool mCustomShaderEnabled;
+
+				ci::gl::GlslProgRef mCustomShaderProgram;
+                ci::gl::GlslProgRef mPhongShaderProgram;
 
 				size_t mAnimationIndex;
 				double mAnimationTime;
