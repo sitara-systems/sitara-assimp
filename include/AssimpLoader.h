@@ -74,7 +74,7 @@ namespace sitara {
 
 		inline ci::ColorAf fromAssimp( const aiColor4D &c )
 		{
-			return ci::ColorAf( c.r, c.g, c.b, c.a );
+            return ci::ColorAf(c.r, c.g, c.b, c.a);
 		}
 
 		inline aiColor4D toAssimp( const ci::ColorAf &c )
@@ -124,10 +124,15 @@ namespace sitara {
 				AssimpLoader() {}
 
 				//! Constructs and does the parsing of the file from \a filename.
-				AssimpLoader( ci::fs::path filename );
+				AssimpLoader(std::filesystem::path& filename);
 
 				//! Updates model animation and skinning.
 				void update();
+
+                //! Draws mesh by index
+				bool drawMesh(int index);
+                //! Draws mesh by name
+				bool drawMesh(const std::string& name);
 				//! Draws all meshes in the model.
 				void draw();
 
@@ -164,17 +169,17 @@ namespace sitara {
 				//! Returns all node names in the model in a std::vector as std::string's.
 				const std::vector< std::string > &getNodeNames() { return mNodeNames; }
 
-				// Setter and getter for setting a custom shader program.  To use this program, you'll need to
+				//! Setter and getter for setting a custom shader program.  To use this program, you'll need to
 				// call `enableCustomShader()`!
                 void setCustomShader(ci::gl::GlslProgRef program) {
                     mCustomShaderProgram = program;
                 }
                 ci::gl::GlslProgRef getCustomShader() { return mCustomShaderProgram; }
 
-				// Enables the usage of a custom shader during draw; disables all other draw options!
+				//! Enables the usage of a custom shader during draw; disables all other draw options!
 				// If you enable this, you're on your own!
                 void enableCustomShader(bool enable = true) { mCustomShaderEnabled = enable; }
-				// Disables the usage of a custom shader
+				//! Disables the usage of a custom shader
                 void disableCustomShader() { mCustomShaderEnabled = false; }
 
 				//! Enables/disables the usage of materials during draw.
@@ -199,10 +204,19 @@ namespace sitara {
 
 				//! Returns the total number of meshes in the model.
 				size_t getNumMeshes() const { return mModelMeshes.size(); }
+
+				//! Hides or shows the nth mesh of a model; this will make the mesh disappear when
+				// calling draw() or drawMesh()
+				void hideMesh(size_t n) { mModelMeshes[n]->mShowMesh = false; }
+                void showMesh(size_t n) { mModelMeshes[n]->mShowMesh = true; }
+
+				AssimpMeshRef getMesh(size_t n) { return mModelMeshes[n]; }
+                const AssimpMeshRef getMesh(size_t n) const { return mModelMeshes[n]; }
+
 				//! Returns the \a n'th mesh in the model.
-				ci::TriMeshRef getMesh( size_t n ) { return mModelMeshes[ n ]->mCachedTriMesh; }
+				ci::TriMeshRef getTriMesh( size_t n ) { return mModelMeshes[ n ]->mCachedTriMesh; }
 				//! Returns the \a n'th mesh in the model.
-				const ci::TriMeshRef getMesh( size_t n ) const { return mModelMeshes[ n ]->mCachedTriMesh; }
+				const ci::TriMeshRef getTriMesh( size_t n ) const { return mModelMeshes[ n ]->mCachedTriMesh; }
 
 				//! Returns the texture of the \a n'th mesh in the model.
 				ci::gl::Texture2dRef getTexture( size_t n ) { return mModelMeshes[ n ]->mTexture; }
@@ -225,6 +239,7 @@ namespace sitara {
 				void loadAllMeshes();
 				AssimpNodeRef loadNodes( const aiNode* nd, AssimpNodeRef parentRef = AssimpNodeRef() );
 				AssimpMeshRef convertAiMesh( const aiMesh *mesh );
+                void drawMesh(AssimpMeshRef mesh);
 
 				void calculateDimensions();
 				void calculateBoundingBox( ci::vec3 *min, ci::vec3 *max );

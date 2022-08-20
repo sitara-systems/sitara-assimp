@@ -22,6 +22,8 @@ public:
     void keyDown(KeyEvent event) override;
 	std::vector<sitara::assimp::AssimpLoader> mAssimpModels;
     std::vector<std::string> mAssimpModelNames;
+    std::vector<std::string> mMeshNames;
+    std::deque<bool> mShowMeshes;
 
 	ci::CameraUi mCameraUi;
 	ci::CameraPersp mCamera;
@@ -43,44 +45,41 @@ public:
     int mModelSelect = 0;
 };
 
-void BasicAssimpExampleApp::setup()
-{
+void BasicAssimpExampleApp::setup() {
+    ci::app::addAssetDirectory("../../../assets/");
+
     CI_LOG_I("Loading 3d models: ");
-    auto teapot = sitara::assimp::AssimpLoader("../../../assets/models/teapot.obj");
+    auto teapot = sitara::assimp::AssimpLoader(ci::app::getAssetPath("models/teapot.obj"));
     mAssimpModels.push_back(teapot);
     mAssimpModelNames.push_back("Plain Utah Teapot");
 
-    auto teapot_red = sitara::assimp::AssimpLoader("../../../assets/models/teapot_red.obj");
+    auto teapot_red = sitara::assimp::AssimpLoader(ci::app::getAssetPath("models/teapot_red.obj"));
     mAssimpModels.push_back(teapot_red);
     mAssimpModelNames.push_back("Red Utah Teapot (.obj)");
 
-	auto teapot_ply = sitara::assimp::AssimpLoader("../../../assets/models/teapot_red.ply");
+	auto teapot_ply = sitara::assimp::AssimpLoader(ci::app::getAssetPath("models/teapot_red.ply"));
     mAssimpModels.push_back(teapot_ply);
     mAssimpModelNames.push_back("Red Utah Teapot (.ply)");
 
-	auto teapot_tex = sitara::assimp::AssimpLoader("../../../assets/models/teapot_textured.obj");
+	auto teapot_tex = sitara::assimp::AssimpLoader(ci::app::getAssetPath("models/teapot_textured.obj"));
     mAssimpModels.push_back(teapot_tex);
     mAssimpModelNames.push_back("Textured Utah Teapot");
 
-	auto spot = sitara::assimp::AssimpLoader("../../../assets/models/spot.obj");
+	auto spot = sitara::assimp::AssimpLoader(ci::app::getAssetPath("models/spot.obj"));
     mAssimpModels.push_back(spot);
     mAssimpModelNames.push_back("Spot");
 
-    auto benchy_stl = sitara::assimp::AssimpLoader("../../../assets/models/3DBenchy.stl");
+    auto benchy_stl = sitara::assimp::AssimpLoader(ci::app::getAssetPath("models/3DBenchy.stl"));
     mAssimpModels.push_back(benchy_stl);
     mAssimpModelNames.push_back("3DBenchy (.stl)");
 
-    auto benchy_3mf = sitara::assimp::AssimpLoader("../../../assets/models/3DBenchy.3mf");
+    auto benchy_3mf = sitara::assimp::AssimpLoader(ci::app::getAssetPath("models/3DBenchy.3mf"));
     mAssimpModels.push_back(benchy_3mf);
     mAssimpModelNames.push_back("3DBenchy (.3mf)");
 
-    auto astroboy = sitara::assimp::AssimpLoader("../../../assets/models/astroboy_walk.dae");
+    auto astroboy = sitara::assimp::AssimpLoader(ci::app::getAssetPath("models/astroboy_walk.dae"));
     mAssimpModels.push_back(astroboy);
     mAssimpModelNames.push_back("Astroboy (.dae)");
-
-    auto tiktaalik = sitara::assimp::AssimpLoader("../../../assets/models/Tiktaalikcolor.ply");
-    mAssimpModels.push_back(tiktaalik);
-    mAssimpModelNames.push_back("Tiktaalik");
 
     mEnableWireframe = false;
     mEnableTextures = true;
@@ -97,8 +96,8 @@ void BasicAssimpExampleApp::setup()
     mCameraAngles = ci::vec3(0.0);
     mModelAngles = ci::vec3(0.0);
     
-    auto vertexShader = ci::app::loadAsset(ci::app::getAssetPath("../../../assets/data/glsl/tint.vert"));
-    auto fragmentShader = ci::app::loadAsset(ci::app::getAssetPath("../../../assets/data/glsl/lambert.frag"));
+    auto vertexShader = ci::app::loadAsset(ci::app::getAssetPath("glsl/vertex/tint.vert"));
+    auto fragmentShader = ci::app::loadAsset(ci::app::getAssetPath("glsl/frag/lambert.frag"));
 
     mCustomShader = ci::gl::GlslProg::create(vertexShader,
                                              fragmentShader);
@@ -120,13 +119,27 @@ void BasicAssimpExampleApp::update()
             if (ImGui::Selectable(item.c_str(), counter == mModelSelect)) {
                 mModelSelect = counter;
             }
+            mMeshNames.clear();
+            mShowMeshes.clear();
+            for (int i = 0; i < mAssimpModels[mModelSelect].getNumMeshes(); i++) {
+                auto mesh = mAssimpModels[mModelSelect].getMesh(i);
+                mMeshNames.push_back(mesh->mName);
+                mShowMeshes.push_back(mesh->mShowMesh);
+            }
             counter++;
         }
         ImGui::ListBoxFooter();
-
+    }
+    if (ImGui::CollapsingHeader("Mesh Options", ImGuiTreeNodeFlags_DefaultOpen)) {
+        for (int i = 0; i < mMeshNames.size(); i++) {
+            isChanged = ImGui::Checkbox(mMeshNames[i].c_str(), &mShowMeshes[i]);
+            if (isChanged) {
+                mAssimpModels[mModelSelect].getMesh(i)->mShowMesh = mShowMeshes[i];
+            }
+        }
     }
     if (ImGui::CollapsingHeader("Render Options", ImGuiTreeNodeFlags_DefaultOpen)) {
-            isChanged = ImGui::Checkbox("Use Wireframe", &mEnableWireframe);
+        isChanged = ImGui::Checkbox("Use Wireframe", &mEnableWireframe);
         isChanged = ImGui::Checkbox("Use Textures", &mEnableTextures);
         if (isChanged) {
             for (auto& model : mAssimpModels) {
@@ -189,14 +202,14 @@ void BasicAssimpExampleApp::update()
     if (mEnableAnimation && mAssimpModels[mModelSelect].getNumAnimations()) {
         double time = fmod(getElapsedSeconds(), mAssimpModels[mModelSelect].getAnimationDuration(0));
         mAssimpModels[mModelSelect].setTime(time);
-        mAssimpModels[mModelSelect].update();    
+        mAssimpModels[mModelSelect].update();
     }
 
 	mFps = getAverageFps();
 }
 
 void BasicAssimpExampleApp::draw() {
-	ci::gl::clear(Color::black());
+	ci::gl::clear(Color::white());
 
 	ci::gl::setMatrices(mCamera);
 
@@ -221,6 +234,7 @@ void BasicAssimpExampleApp::draw() {
 	}
 
 	if (mDrawBBox) {
+        ci::gl::ScopedColor black(ci::Color::black());
 		ci::gl::drawStrokedCube(mAssimpModels[mModelSelect].getBoundingBox());
 	}
 

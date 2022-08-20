@@ -69,6 +69,7 @@ static TriMeshRef fromAssimp( const aiMesh *aim) {
 	{
 		for ( unsigned i = 0; i < aim->mNumVertices; ++i )
 		{
+
 			cim->appendColorRgba( fromAssimp( aim->mColors[0][i] ) );
 		}
 	}
@@ -90,7 +91,8 @@ static TriMeshRef fromAssimp( const aiMesh *aim) {
 	return cim;
 }
 
-AssimpLoader::AssimpLoader( fs::path filename ) :
+AssimpLoader::AssimpLoader(std::filesystem::path& filename)
+    :
 	mMaterialsEnabled( false ),
 	mTexturesEnabled( true ),
 	mSkinningEnabled( false ),
@@ -122,11 +124,10 @@ AssimpLoader::AssimpLoader( fs::path filename ) :
         throw AssimpLoaderExc(mImporterRef->GetErrorString());    
 	}
 
-	auto vertexShader = ci::app::loadAsset(ci::app::getAssetPath("../../../assets/data/glsl/tint.vert"));
-    auto fragmentShader = ci::app::loadAsset(ci::app::getAssetPath("../../../assets/data/glsl/blinn-phong.frag"));
+	auto vertexShader = ci::app::loadAsset(ci::app::getAssetPath("glsl/vertex/passthrough.vert"));
+    auto fragmentShader = ci::app::loadAsset(ci::app::getAssetPath("glsl/frag/blinn-phong.frag"));
 
     mPhongShaderProgram = ci::gl::GlslProg::create(vertexShader, fragmentShader);
-
 
 	calculateDimensions();
 
@@ -412,6 +413,48 @@ AssimpMeshRef AssimpLoader::convertAiMesh( const aiMesh *mesh )
 	}
 
 	return assimpMeshRef;
+}
+
+void AssimpLoader::drawMesh(AssimpMeshRef mesh) {
+    if (mesh->mShowMesh) {
+        ci::gl::ShaderDef shaderDef = ci::gl::ShaderDef().lambert().color();
+
+        if (mesh->mTwoSided) {
+            gl::enable(GL_CULL_FACE);
+        }
+
+        if (mTexturesEnabled && mesh->mTexture) {
+            shaderDef.texture();
+            mesh->mTexture->bind();
+        }
+
+        if (mMaterialsEnabled) {
+            mPhongShaderProgram->uniform("diffuseColor", mesh->mMaterial.mDiffuse);
+            mPhongShaderProgram->uniform("specularColor", mesh->mMaterial.mSpecular);
+            mPhongShaderProgram->uniform("ambientColor", mesh->mMaterial.mAmbient);
+            mPhongShaderProgram->uniform("emissionColor", mesh->mMaterial.mEmission);
+            mPhongShaderProgram->uniform("Ns", mesh->mMaterial.mShininess);
+        }
+
+        // select the appropriate shader
+        if (mCustomShaderEnabled && mCustomShaderProgram != nullptr) {
+            mCustomShaderProgram->bind();
+        } else if (mMaterialsEnabled) {
+            mPhongShaderProgram->bind();
+        } else {
+            ci::gl::getStockShader(shaderDef)->bind();
+        }
+
+        ci::gl::draw(*(mesh->mCachedTriMesh));
+
+        if (mTexturesEnabled && mesh->mTexture) {
+            mesh->mTexture->unbind();
+        }
+
+        if (mesh->mTwoSided) {
+            gl::disable(GL_CULL_FACE);
+        }
+    }
 }
 
 void AssimpLoader::loadAllMeshes()
@@ -816,52 +859,33 @@ void AssimpLoader::update()
 	updateMeshes();
 }
 
+bool AssimpLoader::drawMesh(int index) {
+    if (index < getNumMeshes()) {
+        drawMesh(mModelMeshes[index]);
+	}
+	else {
+        CI_LOG_W("Index " << index << " exceeds the number of meshes in model; could not render mesh.");
+        return false;
+	}
+}
+
+bool AssimpLoader::drawMesh(const std::string& name) {
+    auto meshIt = std::find_if(mModelMeshes.begin(), mModelMeshes.end(),
+                               [&, name](AssimpMeshRef meshRef) { return meshRef->mName == name; });
+    if (meshIt != mModelMeshes.end()) {
+        drawMesh(*meshIt);
+        return true;
+    } else {
+        return false;
+	}
+}
+
 void AssimpLoader::draw() {
     for (auto it = mMeshNodes.begin(); it != mMeshNodes.end(); ++it) {
 		AssimpNodeRef nodeRef = *it;
-
 		for (auto meshIt = nodeRef->mMeshes.begin(); meshIt != nodeRef->mMeshes.end(); ++meshIt) {
 			AssimpMeshRef assimpMeshRef = *meshIt;
-
-			ci::gl::ShaderDef shaderDef = ci::gl::ShaderDef().lambert().color();
-
-			if (assimpMeshRef->mTwoSided) {
-                gl::enable(GL_CULL_FACE);
-            }
-
-			if (mTexturesEnabled && assimpMeshRef->mTexture) {
-                shaderDef.texture();
-                assimpMeshRef->mTexture->bind();
-            }
-
-			if (mMaterialsEnabled) {
-                mPhongShaderProgram->uniform("diffuseColor", assimpMeshRef->mMaterial.mDiffuse);
-                mPhongShaderProgram->uniform("specularColor", assimpMeshRef->mMaterial.mSpecular);
-                mPhongShaderProgram->uniform("ambientColor", assimpMeshRef->mMaterial.mAmbient);
-                mPhongShaderProgram->uniform("emissionColor", assimpMeshRef->mMaterial.mEmission);
-                mPhongShaderProgram->uniform("Ns", assimpMeshRef->mMaterial.mShininess);
-            }
-
-			// select the appropriate shader
-			if (mCustomShaderEnabled && mCustomShaderProgram != nullptr) {
-                mCustomShaderProgram->bind();
-            } 
-			else if (mMaterialsEnabled) {
-                mPhongShaderProgram->bind();
-            }
-			else {
-                ci::gl::getStockShader(shaderDef)->bind();
-			}
-
-			ci::gl::draw(*(assimpMeshRef->mCachedTriMesh));
-
-			if (mTexturesEnabled && assimpMeshRef->mTexture) {
-				assimpMeshRef->mTexture->unbind();
-			}
-
-			if (assimpMeshRef->mTwoSided) {
-                gl::disable(GL_CULL_FACE);
-            }
-		}
+            drawMesh(assimpMeshRef);
+        }
 	}
 }

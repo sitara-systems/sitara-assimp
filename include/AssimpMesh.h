@@ -58,6 +58,7 @@ namespace sitara {
 				std::vector<aiVector3D > mAnimatedNorm;
 
 				std::string mName;
+                bool mShowMesh = true;
 				ci::TriMeshRef mCachedTriMesh;
 				bool mValidCache;
 
