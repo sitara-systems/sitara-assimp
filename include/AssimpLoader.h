@@ -52,11 +52,15 @@ namespace sitara {
 			return ci::quat( q.w, q.x, q.y, q.z );
 		}
 
+		inline aiQuaternion toAssimp(const ci::quat& q) {
+            return aiQuaternion(q.w, q.x, q.y, q.z);
+        }
+
 		inline ci::mat4 fromAssimp( const aiMatrix4x4 &m ) {
-			return ci::mat4(m.a1, m.a2, m.a3, m.a4,
-							m.b1, m.b2, m.b3, m.b4,
-							m.c1, m.c2, m.c3, m.c4,
-							m.d1, m.d2, m.d3, m.d4);
+			return ci::mat4(m.a1, m.b1, m.c1, m.d1,
+							m.a2, m.b2, m.c2, m.d2,
+							m.a3, m.b3, m.c3, m.d3,
+							m.a4, m.b4, m.c4, m.d4);
 		}
 
 		inline aiMatrix4x4 toAssimp( const ci::mat4 &m )
@@ -65,11 +69,6 @@ namespace sitara {
 								m[1][0], m[1][1], m[1][2], m[1][3],
 								m[2][0], m[2][1], m[2][2], m[2][3],
 								m[3][0], m[3][1], m[3][2], m[3][3]);
-		}
-
-		inline aiQuaternion toAssimp( const ci::quat &q )
-		{
-			return aiQuaternion( q.w, q.x, q.y, q.z );
 		}
 
 		inline ci::ColorAf fromAssimp( const aiColor4D &c )
@@ -82,12 +81,6 @@ namespace sitara {
 			return aiColor4D( c.r, c.g, c.b, c.a );
 		}
 
-		/* 3.0
-		inline std::string fromAssimp( const aiString &s )
-		{
-			return std::string( s.C_Str() );
-		}
-		*/
 		inline std::string fromAssimp( const aiString &s )
 		{
 			return std::string( s.data );
@@ -109,14 +102,6 @@ namespace sitara {
 			private:
 				char mMessage[ 513 ];
 		};
-
-		class AssimpNode : public Node
-		{
-			public:
-				std::vector< AssimpMeshRef > mMeshes;
-		};
-
-		typedef std::shared_ptr< AssimpNode > AssimpNodeRef;
 
 		class AssimpLoader
 		{
@@ -226,6 +211,10 @@ namespace sitara {
 				//! Returns the number of animations in the scene.
 				size_t getNumAnimations() const;
 
+				const std::vector<std::string>& getAnimationNames() const;
+
+				const std::string& getAnimationName(size_t n) const;
+
 				//! Sets the current animation index to \a n.
 				void setAnimation( size_t n );
 
@@ -262,6 +251,8 @@ namespace sitara {
 
 				std::vector< std::string > mNodeNames;
 				std::map< std::string, AssimpNodeRef > mNodeMap;
+
+				std::vector<std::string> mAnimationNames;
 
 				bool mMaterialsEnabled;
 				bool mTexturesEnabled;

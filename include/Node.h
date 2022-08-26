@@ -27,21 +27,25 @@
 
 namespace sitara {
 	namespace assimp {
-		class Node;
+		class AssimpNode;
+		typedef std::shared_ptr< AssimpNode > AssimpNodeRef;
 
-		typedef std::shared_ptr< Node > NodeRef;
+		// forward declare
+		class AssimpMesh;
+        typedef std::shared_ptr<AssimpMesh> AssimpMeshRef;
 
-		class Node
+
+		class AssimpNode
 		{
 		public:
-			Node();
-			Node(const std::string& name);
-			virtual ~Node() {};
+			AssimpNode();
+			AssimpNode(const std::string& name);
+			virtual ~AssimpNode() {};
 
-			void setParent(NodeRef parent);
-			NodeRef getParent() const;
+			void setParent(AssimpNodeRef parent);
+			AssimpNodeRef getParent() const;
 
-			void addChild(NodeRef child);
+			void addChild(AssimpNodeRef child);
 
 			void setOrientation(const ci::quat& q);
 			const ci::quat& getOrientation() const;
@@ -73,33 +77,35 @@ namespace sitara {
 
 			const ci::mat4& getDerivedTransform() const;
 
+			std::vector<AssimpMeshRef>& getMeshes();
+
 			void requestUpdate();
 
 		protected:
-			/// Shared pointer to parent node.
-			NodeRef mParent;
+			/// Shared pointer to parent AssimpNode.
+			AssimpNodeRef mParent;
 
 			/// Shared pointer vector holding the children.
-			std::vector< NodeRef > mChildren;
+			std::vector< AssimpNodeRef > mChildren;
 
-			/// Name of this node.
+			/// Name of this AssimpNode.
 			std::string mName;
 
-			/// The orientation of the node relative to its parent.
+			/// The orientation of the AssimpNode relative to its parent.
 			ci::quat mOrientation;
 
-			/// The position of the node relative to its parent.
+			/// The position of the AssimpNode relative to its parent.
 			ci::vec3 mPosition;
 
-			/// Scaling factor applied to this node.
+			/// Scaling factor applied to this AssimpNode.
 			ci::vec3 mScale;
 
-			/// Stores whether this node inherits orientation from its parent.
+			/// Stores whether this AssimpNode inherits orientation from its parent.
 			bool mInheritOrientation;
 
 			mutable bool mNeedsUpdate;
 
-			/// Stores whether this node inherits scale from its parent
+			/// Stores whether this AssimpNode inherits scale from its parent
 			bool mInheritScale;
 
 			/** Cached combined orientation.
@@ -129,6 +135,7 @@ namespace sitara {
 
 			/// Cached derived transform as a 4x4 matrix
 			mutable ci::mat4 mDerivedTransform;
+            std::vector<AssimpMeshRef> mMeshes;
 
 			void update() const;
 		};

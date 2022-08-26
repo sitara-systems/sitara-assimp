@@ -21,7 +21,7 @@ using namespace ci;
 using namespace std;
 using namespace sitara::assimp;
 
-Node::Node() :
+AssimpNode::AssimpNode() :
 	mScale( vec3(1) ),
 	mInheritOrientation( true ),
 	mInheritScale( true ),
@@ -29,7 +29,7 @@ Node::Node() :
 {
 }
 
-Node::Node( const std::string &name ) :
+AssimpNode::AssimpNode( const std::string &name ) :
 	mName( name ),
 	mScale( vec3(1) ),
 	mInheritOrientation( true ),
@@ -38,96 +38,96 @@ Node::Node( const std::string &name ) :
 {
 }
 
-void Node::setParent( NodeRef parent )
+void AssimpNode::setParent( AssimpNodeRef parent )
 {
 	mParent = parent;
 	requestUpdate();
 }
 
-NodeRef Node::getParent() const
+AssimpNodeRef AssimpNode::getParent() const
 {
 	return mParent;
 }
 
-void Node::addChild( NodeRef child )
+void AssimpNode::addChild( AssimpNodeRef child )
 {
 	mChildren.push_back( child );
 }
 
-void Node::setOrientation( const ci::quat &q )
+void AssimpNode::setOrientation( const ci::quat &q )
 {
 	mOrientation = q;
 	mOrientation = glm::normalize(mOrientation);
 	requestUpdate();
 }
 
-const quat &Node::getOrientation() const
+const quat &AssimpNode::getOrientation() const
 {
 	return mOrientation;
 }
 
-void Node::setPosition( const ci::vec3 &pos )
+void AssimpNode::setPosition( const ci::vec3 &pos )
 {
 	mPosition = pos;
 	requestUpdate();
 }
 
-const vec3& Node::getPosition() const
+const vec3& AssimpNode::getPosition() const
 {
 	return mPosition;
 }
 
-void Node::setScale( const vec3 &scale )
+void AssimpNode::setScale( const vec3 &scale )
 {
 	mScale = scale;
 	requestUpdate();
 }
 
-const vec3 &Node::getScale() const
+const vec3 &AssimpNode::getScale() const
 {
 	return mScale;
 }
 
-void Node::setInheritOrientation( bool inherit )
+void AssimpNode::setInheritOrientation( bool inherit )
 {
 	mInheritOrientation = inherit;
 	requestUpdate();
 }
 
-bool Node::getInheritOrientation() const
+bool AssimpNode::getInheritOrientation() const
 {
 	return mInheritOrientation;
 }
 
-void Node::setInheritScale( bool inherit )
+void AssimpNode::setInheritScale( bool inherit )
 {
 	mInheritScale = inherit;
 	requestUpdate();
 }
 
-bool Node::getInheritScale() const
+bool AssimpNode::getInheritScale() const
 {
 	return mInheritScale;
 }
 
-void Node::setName( const string &name )
+void AssimpNode::setName( const string &name )
 {
 	mName = name;
 }
 
-const string &Node::getName() const
+const string &AssimpNode::getName() const
 {
 	return mName;
 }
 
-void Node::setInitialState()
+void AssimpNode::setInitialState()
 {
 	mInitialPosition = mPosition;
 	mInitialOrientation = mOrientation;
 	mInitialScale = mScale;
 }
 
-void Node::resetToInitialState()
+void AssimpNode::resetToInitialState()
 {
 	mPosition = mInitialPosition;
 	mOrientation = mInitialOrientation;
@@ -135,43 +135,43 @@ void Node::resetToInitialState()
 	requestUpdate();
 }
 
-const vec3 &Node::getInitialPosition() const
+const vec3 &AssimpNode::getInitialPosition() const
 {
 	return mInitialPosition;
 }
 
-const quat &Node::getInitialOrientation() const
+const quat &AssimpNode::getInitialOrientation() const
 {
 	return mInitialOrientation;
 }
 
-const vec3 &Node::getInitialScale() const
+const vec3 &AssimpNode::getInitialScale() const
 {
 	return mInitialScale;
 }
 
-const quat &Node::getDerivedOrientation() const
+const quat &AssimpNode::getDerivedOrientation() const
 {
 	if ( mNeedsUpdate )
 		update();
 	return mDerivedOrientation;
 }
 
-const vec3 &Node::getDerivedPosition() const
+const vec3 &AssimpNode::getDerivedPosition() const
 {
 	if ( mNeedsUpdate )
 		update();
 	return mDerivedPosition;
 }
 
-const vec3 &Node::getDerivedScale() const
+const vec3 &AssimpNode::getDerivedScale() const
 {
 	if ( mNeedsUpdate )
 		update();
 	return mDerivedScale;
 }
 
-const mat4 &Node::getDerivedTransform() const
+const mat4 &AssimpNode::getDerivedTransform() const
 {
 	if ( mNeedsUpdate )
 		update();
@@ -183,7 +183,11 @@ const mat4 &Node::getDerivedTransform() const
     return mDerivedTransform;
 }
 
-void Node::update() const
+std::vector<AssimpMeshRef>& AssimpNode::getMeshes() {
+    return mMeshes;
+}
+
+void AssimpNode::update() const
 {
     if ( mParent )
     {
@@ -218,7 +222,7 @@ void Node::update() const
     }
     else
     {
-        // root node, no parent
+        // root AssimpNode, no parent
         mDerivedOrientation = getOrientation();
         mDerivedPosition = getPosition();
         mDerivedScale = getScale();
@@ -227,11 +231,11 @@ void Node::update() const
 	mNeedsUpdate = false;
 }
 
-void Node::requestUpdate()
+void AssimpNode::requestUpdate()
 {
 	mNeedsUpdate = true;
 
-	for ( vector< NodeRef >::iterator it = mChildren.begin();
+	for ( vector< AssimpNodeRef >::iterator it = mChildren.begin();
 			it != mChildren.end(); ++it )
 	{
 		(*it)->requestUpdate();

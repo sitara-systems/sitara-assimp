@@ -60,7 +60,7 @@ static TriMeshRef fromAssimp( const aiMesh *aim) {
 		for ( unsigned i = 0; i < aim->mNumVertices; ++i )
 		{
 			cim->appendTexCoord( vec2( aim->mTextureCoords[0][i].x,
-										aim->mTextureCoords[0][i].y ) );
+										1.0 - aim->mTextureCoords[0][i].y ) );
 		}
 	}
 
@@ -213,7 +213,7 @@ AssimpNodeRef AssimpLoader::loadNodes( const aiNode *nd, AssimpNodeRef parentRef
 			throw AssimpLoaderExc( "node " + nodeRef->getName() + " references mesh #" +
 					toString< unsigned >( meshId ) + " from " +
 					toString< size_t >( mModelMeshes.size() ) + " meshes." );
-		nodeRef->mMeshes.push_back( mModelMeshes[ meshId ] );
+		nodeRef->getMeshes().push_back( mModelMeshes[ meshId ] );
 	}
 
 	// store the node with meshes for rendering
@@ -231,82 +231,74 @@ AssimpNodeRef AssimpLoader::loadNodes( const aiNode *nd, AssimpNodeRef parentRef
 	return nodeRef;
 }
 
-AssimpMeshRef AssimpLoader::convertAiMesh( const aiMesh *mesh )
-{
-	// the current AssimpMesh we will be populating data into.
-	AssimpMeshRef assimpMeshRef = AssimpMeshRef( new AssimpMesh() );
+AssimpMeshRef AssimpLoader::convertAiMesh(const aiMesh* mesh) {
+    // the current AssimpMesh we will be populating data into.
+    AssimpMeshRef assimpMeshRef = AssimpMeshRef(new AssimpMesh());
 
-	assimpMeshRef->mName = fromAssimp( mesh->mName );
+    assimpMeshRef->mName = fromAssimp(mesh->mName);
 
-	// Handle material info
-	aiMaterial *mtl = mScene->mMaterials[ mesh->mMaterialIndex ];
+    // Handle material info
+    aiMaterial* mtl = mScene->mMaterials[mesh->mMaterialIndex];
 
-	aiString name;
-	mtl->Get(AI_MATKEY_NAME, name );
+    aiString name;
+    mtl->Get(AI_MATKEY_NAME, name);
     std::string matName = fromAssimp(name);
     assimpMeshRef->mMaterial.mName = matName;
     CI_LOG_D("Processing Material " << matName);
 
-	// Culling
-	int twoSided;
-	if ( (AI_SUCCESS == mtl->Get(AI_MATKEY_TWOSIDED, twoSided ) ) && twoSided )
-	{
-		assimpMeshRef->mTwoSided = true;
-		assimpMeshRef->mMaterial.mFace = GL_FRONT_AND_BACK;
-		CI_LOG_D("\tTwo-Sided");
-	}
-	else
-	{
-		assimpMeshRef->mTwoSided = false;
-		assimpMeshRef->mMaterial.mFace = GL_FRONT;
-	}
+    // Culling
+    int twoSided;
+    if ((AI_SUCCESS == mtl->Get(AI_MATKEY_TWOSIDED, twoSided)) && twoSided) {
+        assimpMeshRef->mTwoSided = true;
+        assimpMeshRef->mMaterial.mFace = GL_FRONT_AND_BACK;
+        CI_LOG_D("\tTwo-Sided");
+    } else {
+        assimpMeshRef->mTwoSided = false;
+        assimpMeshRef->mMaterial.mFace = GL_FRONT;
+    }
 
-	aiColor4D dcolor, scolor, acolor, ecolor;
+    aiColor4D dcolor, scolor, acolor, ecolor;
     float shininess, refraction;
-	if (AI_SUCCESS == mtl->Get(AI_MATKEY_COLOR_DIFFUSE, dcolor ) )
-	{
-		assimpMeshRef->mMaterial.mDiffuse = fromAssimp( dcolor );
-		CI_LOG_D("\tDiffuse Color: " << fromAssimp( dcolor ));
-	}
+    if (AI_SUCCESS == mtl->Get(AI_MATKEY_COLOR_DIFFUSE, dcolor)) {
+        assimpMeshRef->mMaterial.mDiffuse = fromAssimp(dcolor);
+        CI_LOG_D("\tDiffuse Color: " << fromAssimp(dcolor));
+    }
 
-	if (AI_SUCCESS == mtl->Get(AI_MATKEY_COLOR_SPECULAR, scolor ) )
-	{
-		assimpMeshRef->mMaterial.mSpecular = fromAssimp( scolor );
-		CI_LOG_D("\tSpecular Color: " << fromAssimp( scolor ));
-	}
+    if (AI_SUCCESS == mtl->Get(AI_MATKEY_COLOR_SPECULAR, scolor)) {
+        assimpMeshRef->mMaterial.mSpecular = fromAssimp(scolor);
+        CI_LOG_D("\tSpecular Color: " << fromAssimp(scolor));
+    }
 
-	if (AI_SUCCESS == mtl->Get(AI_MATKEY_COLOR_AMBIENT, acolor ) )
-	{
-		assimpMeshRef->mMaterial.mAmbient = fromAssimp( acolor );
-		CI_LOG_D("\tAmbient Color: " << fromAssimp( acolor ));
-	}
+    if (AI_SUCCESS == mtl->Get(AI_MATKEY_COLOR_AMBIENT, acolor)) {
+        assimpMeshRef->mMaterial.mAmbient = fromAssimp(acolor);
+        CI_LOG_D("\tAmbient Color: " << fromAssimp(acolor));
+    }
 
-	if (AI_SUCCESS == mtl->Get(AI_MATKEY_COLOR_EMISSIVE, ecolor ) )
-	{
-		assimpMeshRef->mMaterial.mEmission = fromAssimp( ecolor );
-		CI_LOG_D("\tEmissive Color: " << fromAssimp( ecolor ));
-	}
+    if (AI_SUCCESS == mtl->Get(AI_MATKEY_COLOR_EMISSIVE, ecolor)) {
+        assimpMeshRef->mMaterial.mEmission = fromAssimp(ecolor);
+        CI_LOG_D("\tEmissive Color: " << fromAssimp(ecolor));
+    }
     if (AI_SUCCESS == mtl->Get(AI_MATKEY_SHININESS, shininess)) {
         assimpMeshRef->mMaterial.mShininess = shininess;
         CI_LOG_D("\tSpecular Highlights (Shininess): " << shininess);
     }
     /*
-	// FIXME: not sensible data, obj .mtl Ns 96.078431 -> 384.314
-	float shininessStrength = 1;
-	if ( AI_SUCCESS == mtl->Get( AI_MATKEY_SHININESS_STRENGTH, shininessStrength ) )
-	{
-		app::console() << "shininess strength: " << shininessStrength << endl;
-	}
-	float shininess;
-	if ( AI_SUCCESS == mtl->Get( AI_MATKEY_SHININESS, shininess ) )
-	{
-		assimpMeshRef->mMaterial.setShininess( shininess * shininessStrength );
-		app::console() << "shininess: " << shininess * shininessStrength << "[" <<
-			shininess << "]" << endl;
-	}
-	*/
+        // FIXME: not sensible data, obj .mtl Ns 96.078431 -> 384.314
+        float shininessStrength = 1;
+        if ( AI_SUCCESS == mtl->Get( AI_MATKEY_SHININESS_STRENGTH, shininessStrength ) )
+        {
+                app::console() << "shininess strength: " << shininessStrength << endl;
+        }
+        float shininess;
+        if ( AI_SUCCESS == mtl->Get( AI_MATKEY_SHININESS, shininess ) )
+        {
+                assimpMeshRef->mMaterial.setShininess( shininess * shininessStrength );
+                app::console() << "shininess: " << shininess * shininessStrength << "[" <<
+                        shininess << "]" << endl;
+        }
+        */
 
-	// TODO: handle blending
+    // TODO: handle blending
 #if 0
 	int blendMode;
 	if(AI_SUCCESS == aiGetMaterialInteger(mtl, AI_MATKEY_BLEND_FUNC, &blendMode)){
@@ -318,79 +310,87 @@ AssimpMeshRef AssimpLoader::convertAiMesh( const aiMesh *mesh )
 	}
 #endif
 
-	// Load Textures
-	int texIndex = 0;
-	aiString texPath;
+    // Load Textures
+    int texIndex = 0;
+    aiString texPath;
 
-	// TODO: handle other aiTextureTypes
-	if (AI_SUCCESS == mtl->GetTexture(aiTextureType_DIFFUSE, texIndex, &texPath ) )
-	{
-		fs::path texFsPath( texPath.data );
-		fs::path modelFolder = mFilePath.parent_path();
-		fs::path relTexPath = texFsPath.parent_path();
-		fs::path texFile = texFsPath.filename();
-		fs::path realPath = modelFolder / relTexPath / texFile;
-		CI_LOG_D("\tDiffuse Texture : " << texPath.data << " [" << realPath.string() << "]");
+    // TODO: handle other aiTextureTypes
+    if (AI_SUCCESS == mtl->GetTexture(aiTextureType_DIFFUSE, texIndex, &texPath)) {
+        fs::path texFsPath(texPath.data);
+        fs::path modelFolder = mFilePath.parent_path();
+        fs::path relTexPath = texFsPath.parent_path();
+        fs::path texFile = texFsPath.filename();
+        fs::path realPath = modelFolder / relTexPath / texFile;
+        fs::path localPath = modelFolder / texFile;
+        CI_LOG_D("\tDiffuse Texture : " << texPath.data << " [" << realPath.string() << "]");
 
-		// texture wrap
-		gl::Texture::Format format;
-		int uwrap;
-		if (AI_SUCCESS == mtl->Get(AI_MATKEY_MAPPINGMODE_U_DIFFUSE( 0 ), uwrap ) )
-		{
-			switch ( uwrap )
-			{
-				case aiTextureMapMode_Wrap:
-					format.setWrapS( GL_REPEAT );
-					break;
+        // texture wrap
+        gl::Texture::Format format;
+        int uwrap;
+        if (AI_SUCCESS == mtl->Get(AI_MATKEY_MAPPINGMODE_U_DIFFUSE(0), uwrap)) {
+            switch (uwrap) {
+                case aiTextureMapMode_Wrap:
+                    format.setWrapS(GL_REPEAT);
+                    break;
 
-				case aiTextureMapMode_Clamp:
-					format.setWrapS( GL_CLAMP );
-					break;
+                case aiTextureMapMode_Clamp:
+                    format.setWrapS(GL_CLAMP);
+                    break;
 
-				case aiTextureMapMode_Decal:
-					// If the texture coordinates for a pixel are outside [0...1]
-					// the texture is not applied to that pixel.
-					format.setWrapS( GL_CLAMP_TO_EDGE );
-					break;
+                case aiTextureMapMode_Decal:
+                    // If the texture coordinates for a pixel are outside [0...1]
+                    // the texture is not applied to that pixel.
+                    format.setWrapS(GL_CLAMP_TO_EDGE);
+                    break;
 
-				case aiTextureMapMode_Mirror:
-					// A texture coordinate u|v becomes u%1|v%1 if (u-(u%1))%2
-					// is zero and 1-(u%1)|1-(v%1) otherwise.
-					// TODO
-					format.setWrapS( GL_REPEAT );
-					break;
-			}
-		}
-		int vwrap;
-		if (AI_SUCCESS == mtl->Get(AI_MATKEY_MAPPINGMODE_V_DIFFUSE( 0 ), vwrap ) )
-		{
-			switch ( vwrap )
-			{
-				case aiTextureMapMode_Wrap:
-					format.setWrapT( GL_REPEAT );
-					break;
+                case aiTextureMapMode_Mirror:
+                    // A texture coordinate u|v becomes u%1|v%1 if (u-(u%1))%2
+                    // is zero and 1-(u%1)|1-(v%1) otherwise.
+                    // TODO
+                    format.setWrapS(GL_REPEAT);
+                    break;
+            }
+        }
+        int vwrap;
+        if (AI_SUCCESS == mtl->Get(AI_MATKEY_MAPPINGMODE_V_DIFFUSE(0), vwrap)) {
+            switch (vwrap) {
+                case aiTextureMapMode_Wrap:
+                    format.setWrapT(GL_REPEAT);
+                    break;
 
-				case aiTextureMapMode_Clamp:
-					format.setWrapT( GL_CLAMP );
-					break;
+                case aiTextureMapMode_Clamp:
+                    format.setWrapT(GL_CLAMP);
+                    break;
 
-				case aiTextureMapMode_Decal:
-					// If the texture coordinates for a pixel are outside [0...1]
-					// the texture is not applied to that pixel.
-					format.setWrapT( GL_CLAMP_TO_EDGE );
-					break;
+                case aiTextureMapMode_Decal:
+                    // If the texture coordinates for a pixel are outside [0...1]
+                    // the texture is not applied to that pixel.
+                    format.setWrapT(GL_CLAMP_TO_EDGE);
+                    break;
 
-				case aiTextureMapMode_Mirror:
-					// A texture coordinate u|v becomes u%1|v%1 if (u-(u%1))%2
-					// is zero and 1-(u%1)|1-(v%1) otherwise.
-					// TODO
-					format.setWrapT( GL_REPEAT );
-					break;
-			}
-		}
+                case aiTextureMapMode_Mirror:
+                    // A texture coordinate u|v becomes u%1|v%1 if (u-(u%1))%2
+                    // is zero and 1-(u%1)|1-(v%1) otherwise.
+                    // TODO
+                    format.setWrapT(GL_REPEAT);
+                    break;
+            }
+        }
 
-		assimpMeshRef->mTexture = gl::Texture::create( loadImage( realPath ), format );
-	}
+        if (std::filesystem::exists(realPath)) {
+            assimpMeshRef->mTexture = gl::Texture::create(loadImage(realPath), format);
+        } else {
+            CI_LOG_V("Could not find texture at " << realPath << "; trying to find texture locally.");
+            // if the hard-coded model path doesn't work, see if we can find the texture file in the same directory
+			// check if it is in assets:
+            if (std::filesystem::exists(localPath)) {
+                assimpMeshRef->mTexture = gl::Texture::create(loadImage(ci::app::getAssetPath(localPath)), format);
+            } else {
+                // if it isn't in the same directory or the hard-coded path, give up
+                CI_LOG_W("Could not find texture " << localPath.filename() << "; will load model without textures.");
+            }
+        }
+    }
 
 	assimpMeshRef->mAiMesh = mesh;
     assimpMeshRef->mCachedTriMesh = fromAssimp(mesh);
@@ -421,7 +421,9 @@ void AssimpLoader::drawMesh(AssimpMeshRef mesh) {
 
         if (mesh->mTwoSided) {
             gl::enable(GL_CULL_FACE);
-        }
+        } else {
+            gl::disable(GL_CULL_FACE);
+		}
 
         if (mTexturesEnabled && mesh->mTexture) {
             shaderDef.texture();
@@ -477,108 +479,100 @@ void AssimpLoader::loadAllMeshes()
 	animationTime = -1;
 	setNormalizedTime(0);
 #endif
+    for (unsigned i = 0; i < mScene->mNumAnimations; ++i) {
+        mAnimationNames.push_back(fromAssimp(mScene->mAnimations[i]->mName));
+    }
 
 	CI_LOG_D("Finished loading model " << mFilePath.filename().string());
 }
 
 void AssimpLoader::updateAnimation( size_t animationIndex, double currentTime )
 {
-	if ( mScene->mNumAnimations == 0 )
-		return;
+    if (mScene->mNumAnimations == 0)
+        return;
 
-	const aiAnimation *mAnim = mScene->mAnimations[ animationIndex ];
-	double ticks = mAnim->mTicksPerSecond;
-	if ( ticks == 0.0 )
-		ticks = 1.0;
-	currentTime *= ticks;
+    const aiAnimation* mAnim = mScene->mAnimations[animationIndex];
+    double ticks = mAnim->mTicksPerSecond;
+    if (ticks == 0.0)
+        ticks = 1.0;
+    currentTime *= ticks;
 
-	// calculate the transformations for each animation channel
-	for( unsigned int a = 0; a < mAnim->mNumChannels; a++ )
-	{
-		const aiNodeAnim *channel = mAnim->mChannels[ a ];
+    // calculate the transformations for each animation channel
+    for (unsigned int a = 0; a < mAnim->mNumChannels; a++) {
+        const aiNodeAnim* channel = mAnim->mChannels[a];
 
-		AssimpNodeRef targetNode = getAssimpNode( fromAssimp( channel->mNodeName ) );
+        AssimpNodeRef targetNode = getAssimpNode(fromAssimp(channel->mNodeName));
 
-		// ******** Position *****
-		aiVector3D presentPosition( 0, 0, 0 );
-		if( channel->mNumPositionKeys > 0 )
-		{
-			// Look for present frame number. Search from last position if time is after the last time, else from beginning
-			// Should be much quicker than always looking from start for the average use case.
-			unsigned int frame = 0;// (currentTime >= lastAnimationTime) ? lastFramePositionIndex : 0;
-			while( frame < channel->mNumPositionKeys - 1)
-			{
-				if( currentTime < channel->mPositionKeys[frame+1].mTime)
-					break;
-				frame++;
-			}
+        // ******** Position *****
+        aiVector3D presentPosition(0, 0, 0);
+        if (channel->mNumPositionKeys > 0) {
+            // Look for present frame number. Search from last position if time is after the last time, else from
+            // beginning Should be much quicker than always looking from start for the average use case.
+            unsigned int frame = 0;  // (currentTime >= lastAnimationTime) ? lastFramePositionIndex : 0;
+            while (frame < channel->mNumPositionKeys - 1) {
+                if (currentTime < channel->mPositionKeys[frame + 1].mTime)
+                    break;
+                frame++;
+            }
 
-			// interpolate between this frame's value and next frame's value
-			unsigned int nextFrame = (frame + 1) % channel->mNumPositionKeys;
-			const aiVectorKey& key = channel->mPositionKeys[frame];
-			const aiVectorKey& nextKey = channel->mPositionKeys[nextFrame];
-			double diffTime = nextKey.mTime - key.mTime;
-			if( diffTime < 0.0)
-				diffTime += mAnim->mDuration;
-			if( diffTime > 0)
-			{
-				float factor = float( (currentTime - key.mTime) / diffTime);
-				presentPosition = key.mValue + (nextKey.mValue - key.mValue) * factor;
-			} else
-			{
-				presentPosition = key.mValue;
-			}
-		}
+            // interpolate between this frame's value and next frame's value
+            unsigned int nextFrame = (frame + 1) % channel->mNumPositionKeys;
+            const aiVectorKey& key = channel->mPositionKeys[frame];
+            const aiVectorKey& nextKey = channel->mPositionKeys[nextFrame];
+            double diffTime = nextKey.mTime - key.mTime;
+            if (diffTime < 0.0)
+                diffTime += mAnim->mDuration;
+            if (diffTime > 0) {
+                float factor = float((currentTime - key.mTime) / diffTime);
+                presentPosition = key.mValue + (nextKey.mValue - key.mValue) * factor;
+            } else {
+                presentPosition = key.mValue;
+            }
+        }
 
-		// ******** Rotation *********
-		aiQuaternion presentRotation( 1, 0, 0, 0);
-		if( channel->mNumRotationKeys > 0)
-		{
-			unsigned int frame = 0;//(currentTime >= lastAnimationTime) ? lastFrameRotationIndex : 0;
-			while( frame < channel->mNumRotationKeys - 1)
-			{
-				if( currentTime < channel->mRotationKeys[frame+1].mTime)
-					break;
-				frame++;
-			}
+        // ******** Rotation *********
+        aiQuaternion presentRotation(1, 0, 0, 0);
+        if (channel->mNumRotationKeys > 0) {
+            unsigned int frame = 0;  //(currentTime >= lastAnimationTime) ? lastFrameRotationIndex : 0;
+            while (frame < channel->mNumRotationKeys - 1) {
+                if (currentTime < channel->mRotationKeys[frame + 1].mTime)
+                    break;
+                frame++;
+            }
 
-			// interpolate between this frame's value and next frame's value
-			unsigned int nextFrame = (frame + 1) % channel->mNumRotationKeys;
-			const aiQuatKey& key = channel->mRotationKeys[frame];
-			const aiQuatKey& nextKey = channel->mRotationKeys[nextFrame];
-			double diffTime = nextKey.mTime - key.mTime;
-			if( diffTime < 0.0)
-				diffTime += mAnim->mDuration;
-			if( diffTime > 0)
-			{
-				float factor = float( (currentTime - key.mTime) / diffTime);
-				aiQuaternion::Interpolate( presentRotation, key.mValue, nextKey.mValue, factor);
-			} else
-			{
-				presentRotation = key.mValue;
-			}
-		}
+            // interpolate between this frame's value and next frame's value
+            unsigned int nextFrame = (frame + 1) % channel->mNumRotationKeys;
+            const aiQuatKey& key = channel->mRotationKeys[frame];
+            const aiQuatKey& nextKey = channel->mRotationKeys[nextFrame];
+            double diffTime = nextKey.mTime - key.mTime;
+            if (diffTime < 0.0)
+                diffTime += mAnim->mDuration;
+            if (diffTime > 0) {
+                float factor = float((currentTime - key.mTime) / diffTime);
+                aiQuaternion::Interpolate(presentRotation, key.mValue, nextKey.mValue, factor);
+            } else {
+                presentRotation = key.mValue;
+            }
+        }
 
-		// ******** Scaling **********
-		aiVector3D presentScaling( 1, 1, 1);
-		if( channel->mNumScalingKeys > 0)
-		{
-			unsigned int frame = 0;//(currentTime >= lastAnimationTime) ? lastFrameScaleIndex : 0;
-			while( frame < channel->mNumScalingKeys - 1)
-			{
-				if( currentTime < channel->mScalingKeys[frame+1].mTime)
-					break;
-				frame++;
-			}
+        // ******** Scaling **********
+        aiVector3D presentScaling(1, 1, 1);
+        if (channel->mNumScalingKeys > 0) {
+            unsigned int frame = 0;  //(currentTime >= lastAnimationTime) ? lastFrameScaleIndex : 0;
+            while (frame < channel->mNumScalingKeys - 1) {
+                if (currentTime < channel->mScalingKeys[frame + 1].mTime)
+                    break;
+                frame++;
+            }
 
-			// TODO: (thom) interpolation maybe? This time maybe even logarithmic, not linear
-			presentScaling = channel->mScalingKeys[frame].mValue;
-		}
+            // TODO: (thom) interpolation maybe? This time maybe even logarithmic, not linear
+            presentScaling = channel->mScalingKeys[frame].mValue;
+        }
 
-		targetNode->setOrientation( fromAssimp( presentRotation ) );
-		targetNode->setScale( fromAssimp( presentScaling ) );
-		targetNode->setPosition( fromAssimp( presentPosition ) );
-	}
+        targetNode->setOrientation(fromAssimp(presentRotation));
+        targetNode->setScale(fromAssimp(presentScaling));
+        targetNode->setPosition(fromAssimp(presentPosition));
+    }
 }
 
 AssimpNodeRef AssimpLoader::getAssimpNode( const std::string &name )
@@ -603,7 +597,7 @@ size_t AssimpLoader::getAssimpNodeNumMeshes( const string &name )
 {
 	AssimpNodeRef node = getAssimpNode( name );
 	if ( node )
-		return node->mMeshes.size();
+		return node->getMeshes().size();
 	else
 		return 0;
 }
@@ -611,8 +605,8 @@ size_t AssimpLoader::getAssimpNodeNumMeshes( const string &name )
 TriMeshRef AssimpLoader::getAssimpNodeMesh( const string &name, size_t n /* = 0 */ )
 {
 	AssimpNodeRef node = getAssimpNode( name );
-	if ( node && n < node->mMeshes.size() )
-		return node->mMeshes[ n ]->mCachedTriMesh;
+    if (node && n < node->getMeshes().size())
+            return node->getMeshes()[n]->mCachedTriMesh;
 	else
 		throw AssimpLoaderExc( "node " + name + " not found." );
 }
@@ -620,8 +614,8 @@ TriMeshRef AssimpLoader::getAssimpNodeMesh( const string &name, size_t n /* = 0 
 const TriMeshRef AssimpLoader::getAssimpNodeMesh( const string &name, size_t n /* = 0 */ ) const
 {
 	const AssimpNodeRef node = getAssimpNode( name );
-	if ( node && n < node->mMeshes.size() )
-		return node->mMeshes[ n ]->mCachedTriMesh;
+    if (node && n < node->getMeshes().size())
+            return node->getMeshes()[n]->mCachedTriMesh;
 	else
 		throw AssimpLoaderExc( "node " + name + " not found." );
 }
@@ -629,8 +623,8 @@ const TriMeshRef AssimpLoader::getAssimpNodeMesh( const string &name, size_t n /
 gl::Texture2dRef &AssimpLoader::getAssimpNodeTexture( const string &name, size_t n /* = 0 */ )
 {
 	AssimpNodeRef node = getAssimpNode( name );
-	if ( node && n < node->mMeshes.size() )
-		return node->mMeshes[ n ]->mTexture;
+    if (node && n < node->getMeshes().size())
+            return node->getMeshes()[n]->mTexture;
 	else
 		throw AssimpLoaderExc( "node " + name + " not found." );
 }
@@ -638,8 +632,8 @@ gl::Texture2dRef &AssimpLoader::getAssimpNodeTexture( const string &name, size_t
 const gl::Texture2dRef &AssimpLoader::getAssimpNodeTexture( const string &name, size_t n /* = 0 */ ) const
 {
 	const AssimpNodeRef node = getAssimpNode( name );
-	if ( node && n < node->mMeshes.size() )
-		return node->mMeshes[ n ]->mTexture;
+    if (node && n < node->getMeshes().size())
+            return node->getMeshes()[n]->mTexture;
 	else
 		throw AssimpLoaderExc( "node " + name + " not found." );
 }
@@ -675,6 +669,15 @@ size_t AssimpLoader::getNumAnimations() const
 	return mScene->mNumAnimations;
 }
 
+const std::vector<std::string>& AssimpLoader::getAnimationNames() const {
+    return mAnimationNames;
+}
+
+const std::string& AssimpLoader::getAnimationName(size_t n) const {
+    int index = math<size_t>::clamp(n, 0, getNumAnimations());
+    return mAnimationNames[index];
+}
+
 void AssimpLoader::setAnimation( size_t n )
 {
 	mAnimationIndex = math< size_t >::clamp( n, 0, getNumAnimations() );
@@ -696,78 +699,83 @@ double AssimpLoader::getAnimationDuration( size_t n ) const
 
 void AssimpLoader::updateSkinning()
 {
-	vector< AssimpNodeRef >::const_iterator it = mMeshNodes.begin();
-	for ( ; it != mMeshNodes.end(); ++it )
-	{
-		AssimpNodeRef nodeRef = *it;
+    vector<AssimpNodeRef>::const_iterator it = mMeshNodes.begin();
+    for (; it != mMeshNodes.end(); ++it) {
+        AssimpNodeRef nodeRef = *it;
 
-		vector< AssimpMeshRef >::const_iterator meshIt = nodeRef->mMeshes.begin();
-		for ( ; meshIt != nodeRef->mMeshes.end(); ++meshIt )
-		{
-			AssimpMeshRef assimpMeshRef = *meshIt;
+        vector<AssimpMeshRef>::const_iterator meshIt = nodeRef->getMeshes().begin();
+        for (; meshIt != nodeRef->getMeshes().end(); ++meshIt) {
+            AssimpMeshRef assimpMeshRef = *meshIt;
 
-			// current mesh we are introspecting
-			const aiMesh *mesh = assimpMeshRef->mAiMesh;
+            // current mesh we are introspecting
+            const aiMesh* mesh = assimpMeshRef->mAiMesh;
 
-			// calculate bone matrices
-			std::vector< aiMatrix4x4 > boneMatrices( mesh->mNumBones );
-			for ( unsigned a = 0; a < mesh->mNumBones; ++a )
-			{
-				const aiBone *bone = mesh->mBones[ a ];
+            // calculate bone matrices
+            std::vector<aiMatrix4x4> boneMatrices(mesh->mNumBones);
+            for (unsigned a = 0; a < mesh->mNumBones; ++a) {
+                const aiBone* bone = mesh->mBones[a];
 
-				// find the corresponding node by again looking recursively through
-				// the node hierarchy for the same name
-				AssimpNodeRef nodeRef = getAssimpNode( fromAssimp( bone->mName ) );
-				assert( nodeRef );
-				// start with the mesh-to-bone matrix
-				// and append all node transformations down the parent chain until
-				// we're back at mesh coordinates again
-				boneMatrices[ a ] = toAssimp( nodeRef->getDerivedTransform() ) *
-										bone->mOffsetMatrix;
-			}
+                // find the corresponding node by again looking recursively through
+                // the node hierarchy for the same name
+                AssimpNodeRef nodeRef = getAssimpNode(fromAssimp(bone->mName));
+                assert(nodeRef);
+                // start with the mesh-to-bone matrix
+                // and append all node transformations down the parent chain until
+                // we're back at mesh coordinates again
+                
+                boneMatrices[a] = toAssimp(nodeRef->getDerivedTransform()) * bone->mOffsetMatrix;
+                
+                /*
+                //! copied from ofAssimpLoader
+                // start with the mesh-to-bone matrix
+                boneMatrices[a] = bone->mOffsetMatrix;
+                // and now append all node transformations down the parent chain until we're back at mesh coordinates
+                // again
+                AssimpNodeRef tempNode = nodeRef;
+                while (tempNode) {
+                    // check your matrix multiplication order here!!!
+                    boneMatrices[a] = toAssimp(tempNode->getDerivedTransform()) * boneMatrices[a];
+                    // boneMatrices[a] = boneMatrices[a] * tempNode->mTransformation;
+                    tempNode = tempNode->getParent();
+                }
+                //! end copy from ofAssimpLoader
+                */
+                assimpMeshRef->mValidCache = false;                
+            }
 
-			assimpMeshRef->mValidCache = false;
+            assimpMeshRef->mAnimatedPos.assign(assimpMeshRef->mAnimatedPos.size(), aiVector3D(0, 0, 0));
+            if (mesh->HasNormals()) {
+                assimpMeshRef->mAnimatedNorm.assign(assimpMeshRef->mAnimatedNorm.size(), aiVector3D(0, 0, 0));
+            }
 
-			assimpMeshRef->mAnimatedPos.assign( assimpMeshRef->mAnimatedPos.size(),
-				aiVector3D( 0, 0, 0 ) );
-			if ( mesh->HasNormals() )
-			{
-				assimpMeshRef->mAnimatedNorm.assign( assimpMeshRef->mAnimatedNorm.size(),
-						aiVector3D( 0, 0, 0 ) );
-			}
+            // loop through all vertex weights of all bones
+            for (unsigned a = 0; a < mesh->mNumBones; ++a) {
+                const aiBone* bone = mesh->mBones[a];
+                const aiMatrix4x4& posTrafo = boneMatrices[a];
 
-			// loop through all vertex weights of all bones
-			for ( unsigned a = 0; a < mesh->mNumBones; ++a )
-			{
-				const aiBone *bone = mesh->mBones[a];
-				const aiMatrix4x4 &posTrafo = boneMatrices[ a ];
+                for (unsigned b = 0; b < bone->mNumWeights; ++b) {
+                    const aiVertexWeight& weight = bone->mWeights[b];
+                    size_t vertexId = weight.mVertexId;
+                    const aiVector3D& srcPos = mesh->mVertices[vertexId];
 
-				for ( unsigned b = 0; b < bone->mNumWeights; ++b )
-				{
-					const aiVertexWeight &weight = bone->mWeights[ b ];
-					size_t vertexId = weight.mVertexId;
-					const aiVector3D& srcPos = mesh->mVertices[vertexId];
+                    assimpMeshRef->mAnimatedPos[vertexId] += weight.mWeight * (posTrafo * srcPos);
+                }
 
-					assimpMeshRef->mAnimatedPos[vertexId] += weight.mWeight * (posTrafo * srcPos);
-				}
+                if (mesh->HasNormals()) {
+                    // 3x3 matrix, contains the bone matrix without the
+                    // translation, only with rotation and possibly scaling
+                    aiMatrix3x3 normTrafo = aiMatrix3x3(posTrafo);
+                    for (size_t b = 0; b < bone->mNumWeights; ++b) {
+                        const aiVertexWeight& weight = bone->mWeights[b];
+                        size_t vertexId = weight.mVertexId;
 
-				if ( mesh->HasNormals() )
-				{
-					// 3x3 matrix, contains the bone matrix without the
-					// translation, only with rotation and possibly scaling
-					aiMatrix3x3 normTrafo = aiMatrix3x3( posTrafo );
-					for ( size_t b = 0; b < bone->mNumWeights; ++b )
-					{
-						const aiVertexWeight &weight = bone->mWeights[b];
-						size_t vertexId = weight.mVertexId;
-
-						const aiVector3D& srcNorm = mesh->mNormals[vertexId];
-						assimpMeshRef->mAnimatedNorm[vertexId] += weight.mWeight * (normTrafo * srcNorm);
-					}
-				}
-			}
-		}
-	}
+                        const aiVector3D& srcNorm = mesh->mNormals[vertexId];
+                        assimpMeshRef->mAnimatedNorm[vertexId] += weight.mWeight * (normTrafo * srcNorm);
+                    }
+                }
+            }
+        }
+    }
 }
 
 void AssimpLoader::updateMeshes()
@@ -777,47 +785,48 @@ void AssimpLoader::updateMeshes()
 	{
 		AssimpNodeRef nodeRef = *it;
 
-		vector< AssimpMeshRef >::iterator meshIt = nodeRef->mMeshes.begin();
-		for ( ; meshIt != nodeRef->mMeshes.end(); ++meshIt )
+		vector<AssimpMeshRef>::iterator meshIt = nodeRef->getMeshes().begin();
+                for (; meshIt != nodeRef->getMeshes().end(); ++meshIt)
 		{
 			AssimpMeshRef assimpMeshRef = *meshIt;
 
 			if ( assimpMeshRef->mValidCache )
 				continue;
 
+			ci::vec3* vertices;
+            size_t numVertices = assimpMeshRef->mCachedTriMesh->getNumVertices();
+
 			if ( mSkinningEnabled )
 			{
 				// animated data
-				std::vector<vec3> vertices;
-				size_t numVertices = assimpMeshRef->mCachedTriMesh->getNumVertices();
-				const auto& positions = assimpMeshRef->mCachedTriMesh->getPositions<3>();
-				for (int i = 0; i < numVertices; i++) {
-					vertices.push_back(positions[i]);
-				}
+                vertices = assimpMeshRef->mCachedTriMesh->getPositions<3>();
+                for (size_t v = 0; v < numVertices; ++v)
+                    vertices[v] = fromAssimp(assimpMeshRef->mAnimatedPos[v]);
 
-				for( size_t v = 0; v < vertices.size(); ++v )
-					vertices[v] = fromAssimp( assimpMeshRef->mAnimatedPos[ v ] );
+                CI_LOG_I("Animation Position, Vertex 0 : " << assimpMeshRef->mAnimatedPos[2].x << ", "
+                                                           << assimpMeshRef->mAnimatedPos[2].y << ", "
+                                                           << assimpMeshRef->mAnimatedPos[2].z);
+                std::vector<ci::vec3>& normals = assimpMeshRef->mCachedTriMesh->getNormals();
+                for (size_t v = 0; v < normals.size(); ++v)
+                    normals[v] = fromAssimp(assimpMeshRef->mAnimatedNorm[v]);
 
-				std::vector< vec3 > &normals = assimpMeshRef->mCachedTriMesh->getNormals();
-				for( size_t v = 0; v < normals.size(); ++v )
-					normals[v] = fromAssimp( assimpMeshRef->mAnimatedNorm[ v ] );
-			}
+            }
 			else
 			{
 				// original mesh data from assimp
 				const aiMesh *mesh = assimpMeshRef->mAiMesh;
 
-				std::vector<vec3> vertices;
-				size_t numVertices = assimpMeshRef->mCachedTriMesh->getNumVertices();
-				const auto& positions = assimpMeshRef->mCachedTriMesh->getPositions<3>();
-				for (int i = 0; i < numVertices; i++) {
-					vertices.push_back(positions[i]);
+                vertices = assimpMeshRef->mCachedTriMesh->getPositions<3>();
+                for (int v = 0; v < numVertices; ++v) {
+                    vertices[v] = fromAssimp(mesh->mVertices[v]);
 				}
 
-				for( size_t v = 0; v < vertices.size(); ++v )
-					vertices[v] = fromAssimp( mesh->mVertices[ v ] );
+                CI_LOG_I("Mesh Position, Vertex 0 : " << mesh->mVertices[2].x << ", "
+                                                            << mesh->mVertices[2].y << ", "
+                                                            << mesh->mVertices[2].z);
 
-				std::vector< vec3 > &normals = assimpMeshRef->mCachedTriMesh->getNormals();
+
+				std::vector<ci::vec3>& normals = assimpMeshRef->mCachedTriMesh->getNormals();
 				for( size_t v = 0; v < normals.size(); ++v )
 					normals[v] = fromAssimp( mesh->mNormals[ v ] );
 			}
@@ -839,8 +848,8 @@ void AssimpLoader::enableSkinning( bool enable /* = true */ )
 	{
 		AssimpNodeRef nodeRef = *it;
 
-		vector< AssimpMeshRef >::const_iterator meshIt = nodeRef->mMeshes.begin();
-		for ( ; meshIt != nodeRef->mMeshes.end(); ++meshIt )
+		vector<AssimpMeshRef>::const_iterator meshIt = nodeRef->getMeshes().begin();
+                for (; meshIt != nodeRef->getMeshes().end(); ++meshIt)
 		{
 			AssimpMeshRef assimpMeshRef = *meshIt;
 			assimpMeshRef->mValidCache = false;
@@ -881,11 +890,23 @@ bool AssimpLoader::drawMesh(const std::string& name) {
 }
 
 void AssimpLoader::draw() {
+    glPushAttrib(GL_ALL_ATTRIB_BITS);
+    glPushClientAttrib(GL_CLIENT_ALL_ATTRIB_BITS);
+    gl::enable(GL_NORMALIZE);
+
     for (auto it = mMeshNodes.begin(); it != mMeshNodes.end(); ++it) {
 		AssimpNodeRef nodeRef = *it;
-		for (auto meshIt = nodeRef->mMeshes.begin(); meshIt != nodeRef->mMeshes.end(); ++meshIt) {
+        
+        //ci::gl::pushMatrices();
+        //ci::gl::setModelMatrix((*it)->getDerivedTransform());
+
+		for (auto meshIt = nodeRef->getMeshes().begin(); meshIt != nodeRef->getMeshes().end(); ++meshIt) {
 			AssimpMeshRef assimpMeshRef = *meshIt;
             drawMesh(assimpMeshRef);
         }
+
+        //ci::gl::popMatrices();
 	}
+    glPopClientAttrib();
+	glPopAttrib();
 }

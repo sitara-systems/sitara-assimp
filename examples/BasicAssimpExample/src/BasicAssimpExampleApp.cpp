@@ -41,45 +41,53 @@ public:
 	bool mEnableAnimation;
     bool mEnableCustomShader;
 	bool mDrawBBox;
+    bool mDrawBones;
 	float mFps;
     int mModelSelect = 0;
+    int mAnimationSelect = 0;
 };
 
 void BasicAssimpExampleApp::setup() {
     ci::app::addAssetDirectory("../../../assets/");
 
     CI_LOG_I("Loading 3d models: ");
-    auto teapot = sitara::assimp::AssimpLoader(ci::app::getAssetPath("models/teapot.obj"));
-    mAssimpModels.push_back(teapot);
-    mAssimpModelNames.push_back("Plain Utah Teapot");
+ //   auto teapot = sitara::assimp::AssimpLoader(ci::app::getAssetPath("models/teapot.obj"));
+ //   mAssimpModels.push_back(teapot);
+ //   mAssimpModelNames.push_back("Plain Utah Teapot");
 
-    auto teapot_red = sitara::assimp::AssimpLoader(ci::app::getAssetPath("models/teapot_red.obj"));
-    mAssimpModels.push_back(teapot_red);
-    mAssimpModelNames.push_back("Red Utah Teapot (.obj)");
+ //   auto teapot_red = sitara::assimp::AssimpLoader(ci::app::getAssetPath("models/teapot_red.obj"));
+ //   mAssimpModels.push_back(teapot_red);
+ //   mAssimpModelNames.push_back("Red Utah Teapot (.obj)");
 
-	auto teapot_ply = sitara::assimp::AssimpLoader(ci::app::getAssetPath("models/teapot_red.ply"));
-    mAssimpModels.push_back(teapot_ply);
-    mAssimpModelNames.push_back("Red Utah Teapot (.ply)");
+	//auto teapot_ply = sitara::assimp::AssimpLoader(ci::app::getAssetPath("models/teapot_red.ply"));
+ //   mAssimpModels.push_back(teapot_ply);
+ //   mAssimpModelNames.push_back("Red Utah Teapot (.ply)");
 
-	auto teapot_tex = sitara::assimp::AssimpLoader(ci::app::getAssetPath("models/teapot_textured.obj"));
-    mAssimpModels.push_back(teapot_tex);
-    mAssimpModelNames.push_back("Textured Utah Teapot");
+	//auto teapot_tex = sitara::assimp::AssimpLoader(ci::app::getAssetPath("models/teapot_textured.obj"));
+ //   mAssimpModels.push_back(teapot_tex);
+ //   mAssimpModelNames.push_back("Textured Utah Teapot");
 
-	auto spot = sitara::assimp::AssimpLoader(ci::app::getAssetPath("models/spot.obj"));
-    mAssimpModels.push_back(spot);
-    mAssimpModelNames.push_back("Spot");
+	//auto spot = sitara::assimp::AssimpLoader(ci::app::getAssetPath("models/spot.obj"));
+ //   mAssimpModels.push_back(spot);
+ //   mAssimpModelNames.push_back("Spot");
 
-    auto benchy_stl = sitara::assimp::AssimpLoader(ci::app::getAssetPath("models/3DBenchy.stl"));
-    mAssimpModels.push_back(benchy_stl);
-    mAssimpModelNames.push_back("3DBenchy (.stl)");
+ //   auto benchy_stl = sitara::assimp::AssimpLoader(ci::app::getAssetPath("models/3DBenchy.stl"));
+ //   mAssimpModels.push_back(benchy_stl);
+ //   mAssimpModelNames.push_back("3DBenchy (.stl)");
 
-    auto benchy_3mf = sitara::assimp::AssimpLoader(ci::app::getAssetPath("models/3DBenchy.3mf"));
-    mAssimpModels.push_back(benchy_3mf);
-    mAssimpModelNames.push_back("3DBenchy (.3mf)");
+ //   auto benchy_3mf = sitara::assimp::AssimpLoader(ci::app::getAssetPath("models/3DBenchy.3mf"));
+ //   mAssimpModels.push_back(benchy_3mf);
+ //   mAssimpModelNames.push_back("3DBenchy (.3mf)");
 
-    auto astroboy = sitara::assimp::AssimpLoader(ci::app::getAssetPath("models/astroboy_walk.dae"));
-    mAssimpModels.push_back(astroboy);
-    mAssimpModelNames.push_back("Astroboy (.dae)");
+    auto sloth = sitara::assimp::AssimpLoader(ci::app::getAssetPath("models/Harlans-ground-sloth.fbx"));
+    sloth.setAnimation(1);
+    mAssimpModels.push_back(sloth);
+    mAssimpModelNames.push_back("Harlan's Ground Sloth (.fbx)");
+
+    auto mastodon = sitara::assimp::AssimpLoader(ci::app::getAssetPath("models/Mastodon.fbx"));
+    mastodon.setAnimation(1);
+    mAssimpModels.push_back(mastodon);
+    mAssimpModelNames.push_back("Mastodon (.fbx)");
 
     mEnableWireframe = false;
     mEnableTextures = true;
@@ -88,6 +96,7 @@ void BasicAssimpExampleApp::setup() {
     mEnableAnimation = false;
     mEnableCustomShader = false;
     mDrawBBox = false;
+    mDrawBones = false;
 
 	mCamera.setPerspective(60, getWindowAspectRatio(), 1.0f, 20000.0f);
     mCamera.lookAt(ci::vec3(-20, 2, -4), ci::vec3(0), ci::vec3(0, 1, 0));
@@ -137,6 +146,17 @@ void BasicAssimpExampleApp::update()
                 mAssimpModels[mModelSelect].getMesh(i)->mShowMesh = mShowMeshes[i];
             }
         }
+        ImGui::ListBoxHeader("Animation Selection");
+        int counter = 0;
+        for (auto& item : mAssimpModels[mModelSelect].getAnimationNames()) {
+            if (ImGui::Selectable(item.c_str(), counter == mAnimationSelect)) {
+                mAnimationSelect = counter;
+                mAssimpModels[mModelSelect].setAnimation(mAnimationSelect);
+            }
+            counter++;
+        }
+        ImGui::ListBoxFooter();
+
     }
     if (ImGui::CollapsingHeader("Render Options", ImGuiTreeNodeFlags_DefaultOpen)) {
         isChanged = ImGui::Checkbox("Use Wireframe", &mEnableWireframe);
@@ -172,6 +192,7 @@ void BasicAssimpExampleApp::update()
             }
         }
         isChanged = ImGui::Checkbox("Draw BBox", &mDrawBBox);
+        isChanged = ImGui::Checkbox("Draw Bones", &mDrawBones);
     }
 
     if (ImGui::CollapsingHeader("Camera Options", ImGuiTreeNodeFlags_DefaultOpen)) {
@@ -200,7 +221,7 @@ void BasicAssimpExampleApp::update()
     ImGui::End();
 
     if (mEnableAnimation && mAssimpModels[mModelSelect].getNumAnimations()) {
-        double time = fmod(getElapsedSeconds(), mAssimpModels[mModelSelect].getAnimationDuration(0));
+        double time = fmod(getElapsedSeconds(), mAssimpModels[mModelSelect].getAnimationDuration(1));
         mAssimpModels[mModelSelect].setTime(time);
         mAssimpModels[mModelSelect].update();
     }
@@ -229,7 +250,7 @@ void BasicAssimpExampleApp::draw() {
 
 	mAssimpModels[mModelSelect].draw();
 
-	if (mEnableWireframe) {
+    if (mEnableWireframe) {
 		ci::gl::disableWireframe();
 	}
 
@@ -237,6 +258,10 @@ void BasicAssimpExampleApp::draw() {
         ci::gl::ScopedColor black(ci::Color::black());
 		ci::gl::drawStrokedCube(mAssimpModels[mModelSelect].getBoundingBox());
 	}
+
+    if (mDrawBones) {
+            //mAssimpModels[mModelSelect].get
+    }
 
 	ci::gl::disableDepthRead();
 	ci::gl::disableDepthWrite();
