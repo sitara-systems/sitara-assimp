@@ -91,48 +91,49 @@ static TriMeshRef fromAssimp( const aiMesh *aim) {
 	return cim;
 }
 
-AssimpLoader::AssimpLoader(std::filesystem::path& filename)
-    :
-	mMaterialsEnabled( false ),
-	mTexturesEnabled( true ),
-	mSkinningEnabled( false ),
-	mAnimationEnabled( false ),
-    mCustomShaderEnabled( false ),
-	mFilePath( filename ),
-	mAnimationIndex( 0 ),
-      mCustomShaderProgram(nullptr) {
-	// FIXME: aiProcessPreset_TargetRealtime_MaxQuality contains
-	// aiProcess_Debone which is buggy in 3.0.1270
-	unsigned flags = aiProcess_Triangulate |
-		aiProcess_FlipUVs |
-		aiProcessPreset_TargetRealtime_Quality |
-		aiProcess_FindInstances |
-		aiProcess_ValidateDataStructure |
-		aiProcess_OptimizeMeshes;
+std::shared_ptr<AssimpLoader> sitara::assimp::AssimpLoader::create() {
+    return std::shared_ptr<AssimpLoader>(new AssimpLoader());
+}
 
-	mImporterRef = shared_ptr< Assimp::Importer >( new Assimp::Importer() );
-	mImporterRef->SetPropertyInteger( AI_CONFIG_PP_SBP_REMOVE,
-			aiPrimitiveType_LINE | aiPrimitiveType_POINT );
-	mImporterRef->SetPropertyInteger( AI_CONFIG_PP_PTV_NORMALIZE, true );
+std::shared_ptr<AssimpLoader> sitara::assimp::AssimpLoader::create(std::filesystem::path& filename) {
+    return std::shared_ptr<AssimpLoader>(new AssimpLoader(filename));
+}
 
-	if (!std::filesystem::exists(filename.string())) {
-        throw AssimpLoaderExc("No file could be found at " + filename.string());
+void sitara::assimp::AssimpLoader::setFilename(const std::filesystem::path& filename) {
+    mFilePath = filename;
+}
+
+void sitara::assimp::AssimpLoader::preloadModel() {
+    // FIXME: aiProcessPreset_TargetRealtime_MaxQuality contains
+    // aiProcess_Debone which is buggy in 3.0.1270
+    unsigned flags = aiProcess_Triangulate | aiProcess_FlipUVs | aiProcessPreset_TargetRealtime_Quality |
+                     aiProcess_FindInstances | aiProcess_ValidateDataStructure | aiProcess_OptimizeMeshes;
+
+    mImporterRef = shared_ptr<Assimp::Importer>(new Assimp::Importer());
+    mImporterRef->SetPropertyInteger(AI_CONFIG_PP_SBP_REMOVE, aiPrimitiveType_LINE | aiPrimitiveType_POINT);
+    mImporterRef->SetPropertyInteger(AI_CONFIG_PP_PTV_NORMALIZE, true);
+
+    if (!std::filesystem::exists(mFilePath.string())) {
+        throw AssimpLoaderExc("No file could be found at " + mFilePath.string());
     }
 
-	mScene = mImporterRef->ReadFile( filename.string(), flags );
+    // this is the most cpu-intensive part!
+    mScene = mImporterRef->ReadFile(mFilePath.string(), flags);
     if (!mScene) {
-        throw AssimpLoaderExc(mImporterRef->GetErrorString());    
-	}
+        throw AssimpLoaderExc(mImporterRef->GetErrorString());
+    }
+}
 
-	auto vertexShader = ci::app::loadAsset(ci::app::getAssetPath("glsl/vertex/passthrough.vert"));
+void sitara::assimp::AssimpLoader::postloadModel() {
+    auto vertexShader = ci::app::loadAsset(ci::app::getAssetPath("glsl/vertex/passthrough.vert"));
     auto fragmentShader = ci::app::loadAsset(ci::app::getAssetPath("glsl/frag/blinn-phong.frag"));
 
     mPhongShaderProgram = ci::gl::GlslProg::create(vertexShader, fragmentShader);
 
-	calculateDimensions();
+    calculateDimensions();
 
-	loadAllMeshes();
-	mRootNode = loadNodes( mScene->mRootNode );
+    loadAllMeshes();
+    mRootNode = loadNodes(mScene->mRootNode);
 }
 
 void AssimpLoader::calculateDimensions()
@@ -457,6 +458,22 @@ void AssimpLoader::drawMesh(AssimpMeshRef mesh) {
             gl::disable(GL_CULL_FACE);
         }
     }
+}
+
+AssimpLoader::AssimpLoader()
+    : mMaterialsEnabled(false),
+      mTexturesEnabled(true),
+      mSkinningEnabled(false),
+      mAnimationEnabled(false),
+      mCustomShaderEnabled(false),
+      mAnimationIndex(0),
+      mAnimationTime(0),
+      mCustomShaderProgram(nullptr) {}
+
+AssimpLoader::AssimpLoader(const std::filesystem::path& filename) : AssimpLoader() {
+    setFilename(filename);
+    preloadModel();
+    postloadModel();
 }
 
 void AssimpLoader::loadAllMeshes()
@@ -803,9 +820,6 @@ void AssimpLoader::updateMeshes()
                 for (size_t v = 0; v < numVertices; ++v)
                     vertices[v] = fromAssimp(assimpMeshRef->mAnimatedPos[v]);
 
-                CI_LOG_I("Animation Position, Vertex 0 : " << assimpMeshRef->mAnimatedPos[2].x << ", "
-                                                           << assimpMeshRef->mAnimatedPos[2].y << ", "
-                                                           << assimpMeshRef->mAnimatedPos[2].z);
                 std::vector<ci::vec3>& normals = assimpMeshRef->mCachedTriMesh->getNormals();
                 for (size_t v = 0; v < normals.size(); ++v)
                     normals[v] = fromAssimp(assimpMeshRef->mAnimatedNorm[v]);
@@ -820,11 +834,6 @@ void AssimpLoader::updateMeshes()
                 for (int v = 0; v < numVertices; ++v) {
                     vertices[v] = fromAssimp(mesh->mVertices[v]);
 				}
-
-                CI_LOG_I("Mesh Position, Vertex 0 : " << mesh->mVertices[2].x << ", "
-                                                            << mesh->mVertices[2].y << ", "
-                                                            << mesh->mVertices[2].z);
-
 
 				std::vector<ci::vec3>& normals = assimpMeshRef->mCachedTriMesh->getNormals();
 				for( size_t v = 0; v < normals.size(); ++v )

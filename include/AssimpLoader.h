@@ -19,7 +19,7 @@
 
 #include <vector>
 
-//* 3.0
+//* 5.0
 #include "assimp/Importer.hpp"
 #include "assimp/scene.h"
 #include "assimp/postprocess.h"
@@ -106,10 +106,13 @@ namespace sitara {
 		class AssimpLoader
 		{
 			public:
-				AssimpLoader() {}
-
-				//! Constructs and does the parsing of the file from \a filename.
-				AssimpLoader(std::filesystem::path& filename);
+                static std::shared_ptr<AssimpLoader> create();
+                static std::shared_ptr<AssimpLoader> create(std::filesystem::path& filename);
+                void setFilename(const std::filesystem::path& filename);
+				//! Used for async loading; CPU-only tasks and heavy processing
+				void preloadModel();
+				//! GL Shaders and conversion to ci::TriMesh
+                void postloadModel();
 
 				//! Updates model animation and skinning.
 				void update();
@@ -225,6 +228,14 @@ namespace sitara {
 				void setTime( double t );
 
 			private:
+                //! Constructs the class and nothing more -- you'll need to manually set filename,
+                //! preload, and postload.  See next constructor.
+                AssimpLoader();
+
+                //! Constructs and does the parsing of the file from \a filename.  Automatically sets
+                //! filename, preloads, and postloads.
+                AssimpLoader(const std::filesystem::path& filename);
+
 				void loadAllMeshes();
 				AssimpNodeRef loadNodes( const aiNode* nd, AssimpNodeRef parentRef = AssimpNodeRef() );
 				AssimpMeshRef convertAiMesh( const aiMesh *mesh );
@@ -266,6 +277,8 @@ namespace sitara {
 				size_t mAnimationIndex;
 				double mAnimationTime;
 		};
+
+		typedef std::shared_ptr<AssimpLoader> AssimpLoaderRef;
 	}
 }
 
